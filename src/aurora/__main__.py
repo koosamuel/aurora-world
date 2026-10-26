@@ -8,7 +8,7 @@ def main():
     parser=argparse.ArgumentParser(description='Aurora World synthetic forecasting')
     sub=parser.add_subparsers(dest='command',required=True)
     demo=sub.add_parser('demo');demo.add_argument('--config',default='configs/demo.json');demo.add_argument('--output',default='results/baseline.json');demo.add_argument('--report',type=Path)
-    server=sub.add_parser('serve');server.add_argument('--port',type=int,default=8765)
+    server=sub.add_parser('serve');server.add_argument('--port',type=int,default=8765);server.add_argument('--public-input',type=Path)
     worker=sub.add_parser('worker');worker.add_argument('--once',action='store_true');worker.add_argument('--env-file',type=Path)
     args=parser.parse_args()
     if args.command=='demo':
@@ -22,7 +22,7 @@ def main():
         print(json.dumps(dict(output=str(out),quality=result['quality'],paired_metrics=result['paired_metrics']),ensure_ascii=False,indent=2))
     elif args.command=='serve':
         from .server import serve
-        serve(Path(__file__).resolve().parents[2],port=args.port)
+        serve(Path(__file__).resolve().parents[2],port=args.port,public_input=args.public_input)
     else:
         if args.env_file:
             import os

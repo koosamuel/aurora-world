@@ -17,3 +17,5 @@ where = ["src"]
 
 [project.optional-dependencies]
 data = ["Pillow>=10,<13"]
+
+retail = ["openpyxl>=3.1,<4"]

@@ -1,4 +1,5 @@
 import {demoApi,SupabaseApi} from './api.js';
+import {renderPublic} from './public-view.js';
 import {drawChart} from './chart.js';
 import {initLabeling} from './labeling.js';
 import {renderDecisions,renderDecisionSku} from './decision-view.js';
@@ -9,7 +10,7 @@ const fmt=n=>n===null || n===undefined ? '해당 없음' : new Intl.NumberFormat
 let api, epoch=0, viewSeq=0, selected=null, result=null, polling=null, busy=false, pendingRequest=null;
 function saved(key,value) { try {if(value===undefined)return sessionStorage.getItem(key);if(value===null)sessionStorage.removeItem(key);else sessionStorage.setItem(key,value);} catch{} }
 function notice(message) { $('notice').textContent=message||'';$('notice').hidden=!message; }
-function empty(message='첫 번째 예측을 시작하세요') {result=null;$('result-content').hidden=true;$('empty-state').hidden=false;$('empty-state').querySelector('h3').textContent=message;}
+function empty(message='첫 번째 예측을 시작하세요') {result=null;$('result-content').hidden=true;$('public-result').hidden=true;$('empty-state').hidden=false;$('empty-state').querySelector('h3').textContent=message;}
 function tab(type) {
   if(!['forecast','labeling'].includes(type))type='forecast';
   for(const t of ['forecast','labeling']) { const active=t===type;$(`tab-${t}`).setAttribute('aria-selected',String(active));$(`tab-${t}`).tabIndex=active?0:-1;$(`${t}-panel`).hidden=!active; }
@@ -20,7 +21,8 @@ for(const b of document.querySelectorAll('[data-tab]')) {
   b.addEventListener('click',()=>tab(b.dataset.tab));
   b.addEventListener('keydown',e=>{if(!['ArrowRight','ArrowLeft','Home','End'].includes(e.key))return;e.preventDefault();const type=e.key==='Home'?'forecast':e.key==='End'?'labeling':b.dataset.tab==='forecast'?'labeling':'forecast';tab(type);$(`tab-${type}`).focus();});
 }
-function config() {return {skus:Number($('skus').value),weeks:Number($('weeks').value),horizon:Number($('horizon').value),season_length:Number($('season').value),validation_origins:3};}
+function publicData(){return api?.dataset?.dataset_kind==='public_retail';}
+function config() {if(publicData()){const text=$('public-policy').value.trim()||'{}';if(new TextEncoder().encode(text).length>65536)throw new Error('정책 입력은 최대 64 KiB입니다.');const p=JSON.parse(text);if(!p||Array.isArray(p)||typeof p!=='object')throw new Error('정책 JSON 객체가 필요합니다.');return {policy_inputs:p};}return {skus:Number($('skus').value),weeks:Number($('weeks').value),horizon:Number($('horizon').value),season_length:Number($('season').value),validation_origins:3};}
 function renderSeries() {
   if(!result)return;const series=result.series.find(s=>s.sku===$('sku-select').value)||result.series[0];
   renderDecisionSku(result.decisions,series.sku);
@@ -28,6 +30,11 @@ function renderSeries() {
   $('series-note').textContent=`${series.sku} · ${series.pattern} · 결측·미개시·반품은 수요 0으로 채우지 않습니다. ${Object.entries(series.unavailable).filter(([,v])=>v).map(([k,v])=>`${modelNames[k]}: ${v}`).join(' / ')}`;
 }
 function renderResult(data) {
+  if(data.schema_version==='aurora-public-evaluation-v1'){
+    const adapter=api,ticket=epoch;result=data;$('result-content').hidden=true;$('empty-state').hidden=true;$('public-result').hidden=false;
+    renderPublic(data,async a=>{const blob=await adapter.downloadArtifact(a);if(adapter!==api||ticket!==epoch)throw new Error('화면이 변경되어 다운로드를 중단했습니다.');const url=URL.createObjectURL(blob);const el=document.createElement('a');el.href=url;el.download=a.name;el.click();setTimeout(()=>URL.revokeObjectURL(url),1000);});return;
+  }
+  $('public-result').hidden=true;
   if(data.schema_version!=='aurora-baseline-v1'||data.synthetic!==true)throw new Error('지원하는 합성 기준선 결과가 아닙니다.');
   result=data;$('input-notice').hidden=!data.input_manifest;$('input-notice').textContent=data.input_manifest?'관측 총출하량 입력 · 품절 '+data.quality.stockouts+'건. 잠재 수요와 다릅니다. 반품은 별도 기록하며, 아래 재고 비교의 단가는 공통 가상값 1,000원입니다.':'';$('empty-state').hidden=true;$('result-content').hidden=false;
   $('metric-skus').textContent=fmt(data.quality.series);$('metric-weeks').textContent=`${data.config.weeks}주 · ${data.input_manifest?"입력 파일":"Seed "+data.config.seed}`;
@@ -48,20 +55,22 @@ async function selectRun(id, ticket=epoch) {
 }
 function updateControls() {
   const cloud=api.mode==='supabase',preview=api.mode==='preview';
+  const observed=publicData();$('run-help').textContent=observed?'공개 청구 수량을 평가하고 가정 기반 재고 시나리오를 비교합니다.':'합성 세그먼트·모델 선택·재고 비교를 함께 계산합니다.';$('run-assumption').textContent=observed?'파일에 고정된 선택·워밍업·평가 분할을 사용합니다. 마지막 평가를 튜닝에 사용하지 않습니다.':'Seed 42 · 검증 원점 3개 · 마지막 구간은 최종 평가용으로 보류';$('public-policy-label').hidden=!observed;$('public-policy').disabled=preview;
   const datasets=api.datasets||[];$('dataset-picker-label').hidden=!datasets.length;
   $('dataset-picker').replaceChildren(...datasets.map(d=>new Option(d.name,d.id)));
   if(api.dataset)$('dataset-picker').value=api.dataset.id;$('dataset-picker').disabled=busy;
-  $('connection').textContent=cloud?(api.session?'Supabase · 로그인됨':'Supabase · 로그인 필요'):preview?'저장된 합성 결과 · 미리보기':'로컬 · 합성 계산';
-  for(const id of ['skus','weeks'])$(id).disabled=cloud||preview;
-  for(const id of ['horizon','season'])$(id).disabled=preview;
+  $('connection').textContent=cloud?(api.session?'Supabase · 로그인됨':'Supabase · 로그인 필요'):preview?(observed?'저장된 공개 거래 · 미리보기':'저장된 합성 결과 · 미리보기'):(observed?'로컬 · 공개 거래 계산':'로컬 · 합성 계산');
+  for(const id of ['skus','weeks'])$(id).disabled=cloud||preview||observed;
+  for(const id of ['horizon','season'])$(id).disabled=preview||observed;
   $('run').disabled=busy || cloud&&(!api.session||!api.dataset);
-  $('run').textContent=busy?'요청 중…':preview?'합성 데모 불러오기':'합성 기준선 실행 ↗';
+  $('run').textContent=busy?'요청 중…':preview?(observed?'공개 거래 결과 불러오기':'합성 데모 불러오기'):(observed?'공개 거래·32주 재고 실행 ↗':'합성 기준선 실행 ↗');
   $('login-form').hidden=!cloud;$('logout').hidden=!cloud||!api.session;
   for(const el of $('login-form').querySelectorAll('input,button[type="submit"]'))el.hidden=cloud&&!!api.session;
   $('auth-state').textContent=cloud?(api.session?`로그인: ${api.session.user.email} · 세션은 메모리에만 유지됩니다.`:'로그인 후 프로젝트 멤버 권한을 확인합니다.'):'로컬에서는 새로 계산합니다. GitHub Pages 미리보기는 미리 계산한 합성 결과를 표시합니다.';
-  $('dataset-label').textContent=cloud?(api.dataset?.name||'준비된 합성 데이터셋 없음'):preview?(api.dataset?.name+' · 저장된 결과'):'합성 주간 수요 · 요청마다 계산';
-  if(cloud&&api.dataset){$('skus').value=api.dataset.generator_config.skus;$('weeks').value=api.dataset.generator_config.weeks;}
-  if(preview){$('skus').value=api.dataset.generator_config.skus;$('weeks').value=156;$('horizon').value=4;$('season').value=52;}
+  $('dataset-label').textContent=observed?(api.dataset.name+(preview?' · 저장된 결과':' · 서버 계산')):cloud?(api.dataset?.name||'준비된 합성 데이터셋 없음'):preview?(api.dataset?.name+' · 저장된 결과'):'합성 주간 수요 · 요청마다 계산';
+  if((cloud||observed)&&api.dataset){$('skus').value=api.dataset.generator_config.skus;$('weeks').value=api.dataset.generator_config.weeks;}
+  if(preview){$('skus').value=api.dataset.generator_config.skus;$('weeks').value=api.dataset.generator_config.weeks;$('horizon').value=4;$('season').value=52;}
+  if(observed)$('horizon').value=1;
   $('label-project').textContent='브라우저 합성 데모 · 로그인 없이 실행 · 검수는 현재 브라우저 세션에만 저장됩니다.';
 }
 async function refresh() {
@@ -80,16 +89,16 @@ async function changeMode(adapter) {
   epoch++;clearTimeout(polling);api=adapter;restoreDataset();selected=null;pendingRequest=null;busy=false;notice('');empty();$('run-list').replaceChildren();updateControls();await refresh();
 }
 $('run-form').addEventListener('submit',async e=>{
-  e.preventDefault();if(busy)return;const ticket=epoch,adapter=api,c=config(),signature=JSON.stringify(c);
-  if(c.weeks<=c.horizon*4){notice('검증과 최종 평가를 나눌 이력이 부족합니다.');return;}
+  e.preventDefault();if(busy)return;const ticket=epoch,adapter=api;let c;try{c=config();}catch(error){notice('실행 설정: '+error.message);return;}const signature=JSON.stringify([api.dataset?.id,c]);
+  if(!publicData()&&c.weeks<=c.horizon*4){notice('검증과 최종 평가를 나눌 이력이 부족합니다.');return;}
   busy=true;notice('');updateControls();
   if(!pendingRequest||pendingRequest.signature!==signature)pendingRequest={signature,key:crypto.randomUUID()};
-  try {const run=await adapter.requestRun(c,pendingRequest.key);if(ticket!==epoch)return;pendingRequest=null;selected=run.id;await selectRun(run.id,ticket);await refresh();if(adapter.mode==='preview')notice('Python으로 미리 계산한 고정 합성 결과입니다. 새 계산은 로컬 실행 모드를 사용하세요.');}
+  try {const run=await adapter.requestRun(c,pendingRequest.key);if(ticket!==epoch)return;pendingRequest=null;selected=run.id;await selectRun(run.id,ticket);await refresh();if(adapter.mode==='preview')notice('Python으로 미리 계산한 고정 결과입니다. 새 계산은 로컬 또는 로그인한 서버 실행을 사용하세요.');}
   catch(error){if(ticket===epoch)notice(error.message);}
   finally{if(ticket===epoch){busy=false;updateControls();}}
 });
 function restoreDataset(){const id=saved(`aurora-dataset-${api.mode}`);const d=api.datasets?.find(d=>d.id===id);if(d)api.dataset=d;}
-$('dataset-picker').addEventListener('change',async()=>{const d=api.datasets?.find(d=>d.id===$('dataset-picker').value);if(!d)return;epoch++;viewSeq++;clearTimeout(polling);api.dataset=d;saved(`aurora-dataset-${api.mode}`,d.id);selected=null;pendingRequest=null;empty();notice('');updateControls();await refresh();});
+$('dataset-picker').addEventListener('change',async()=>{const d=api.datasets?.find(d=>d.id===$('dataset-picker').value);if(!d)return;epoch++;viewSeq++;clearTimeout(polling);api.dataset=d;if(!publicData())$('horizon').value=4;saved(`aurora-dataset-${api.mode}`,d.id);selected=null;pendingRequest=null;empty();notice('');updateControls();await refresh();});
 $('refresh').addEventListener('click',refresh);$('sku-select').addEventListener('change',renderSeries);
 $('download').addEventListener('click',()=>{if(!result)return;const url=URL.createObjectURL(new Blob([JSON.stringify(result,null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='aurora-synthetic-baseline.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);});
 $('settings-toggle').addEventListener('click',()=>{$('settings').hidden=!$('settings').hidden;$('settings-toggle').setAttribute('aria-expanded',String(!$('settings').hidden));});

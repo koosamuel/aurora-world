@@ -16,14 +16,14 @@ class Remote:
     def __init__(self):
         self.url=os.environ.get('SUPABASE_URL','').rstrip('/');self.secret=os.environ.get('SUPABASE_SERVICE_ROLE_KEY','')
         u=urlsplit(self.url);require(u.scheme=='https' and u.hostname and u.path=='' and not u.query and not u.fragment and not u.username and not u.password and self.secret,'워커 URL/비밀 설정을 확인하세요.')
-    def request(self,path,method='GET',body=None,data=None,raw=False):
+    def request(self,path,method='GET',body=None,data=None,raw=False,content_type='application/json',max_bytes=MAX_BYTES):
         require(path.startswith(('/rest/v1/','/storage/v1/')),'서버 경로를 확인하세요.')
-        headers={'apikey':self.secret,'Authorization':'Bearer '+self.secret,'Content-Type':'application/json'}
+        headers={'apikey':self.secret,'Authorization':'Bearer '+self.secret,'Content-Type':content_type}
         if body is not None:data=json.dumps(body,ensure_ascii=False,allow_nan=False).encode()
         req=Request(self.url+path,data=data,headers=headers,method=method)
         try:
             with urlopen(req,timeout=60) as response:
-                data=response.read(MAX_BYTES+1);require(len(data)<=MAX_BYTES,'서버 응답 크기 초과입니다.')
+                data=response.read(max_bytes+1);require(len(data)<=max_bytes,'서버 응답 크기 초과입니다.')
                 return data if raw else json.loads(data) if data else None
         except HTTPError as e:raise RemoteError(e.code) from None
 
@@ -73,6 +73,9 @@ def provision(remote,payload,project_id):
 
 def compute_job(remote,job):
     config=job['generator_config']
+    if config.get('mode')=='public_file_v1':
+        from .public_service import compute_public_job
+        return compute_public_job(remote,job)
     if config.get('mode')=='weekly_file_v1':
         rows=remote.request('/rest/v1/runs?select=project_id&id=eq.'+str(uuid.UUID(job['id'])))
         require(len(rows)==1,'작업 프로젝트가 없습니다.')

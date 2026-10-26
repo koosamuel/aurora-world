@@ -8,9 +8,12 @@ import threading
 from .jobs import Store, PROJECTS, work_once
 
 
-def serve(root, host='127.0.0.1', port=8765):
+def serve(root, host='127.0.0.1', port=8765, public_input=None):
     root=Path(root); store=Store(root/'results/local-demo.sqlite3')
     pool=ThreadPoolExecutor(max_workers=2)
+    if public_input is None:public_input=root.parent/'04_데이터/가공/2026-10-26_UCI_Online_Retail_II/weekly.json'
+    from .public_jobs import PublicStore
+    public=PublicStore(root/'results/public-jobs.sqlite3',public_input) if Path(public_input).exists() else None
     class Handler(SimpleHTTPRequestHandler):
         def __init__(self,*args,**kwargs):super().__init__(*args,directory=str(root/'client'),**kwargs)
         def respond(self,payload,status=200):
@@ -25,6 +28,20 @@ def serve(root, host='127.0.0.1', port=8765):
             if not self.allowed_host():return self.respond(dict(error='로컬 호스트만 허용됩니다.'),403)
             path=urlparse(self.path).path
             try:
+                if path=='/api/datasets':return self.respond([dict(id='local-generated',name='로컬 합성 · 새 계산',dataset_kind='synthetic',generator_config=dict(skus=50,weeks=156))]+([public.dataset] if public else []))
+                if path.startswith('/api/public/artifacts/'):
+                    bits=path.split('/')
+                    file=public.artifact(bits[-2],bits[-1]) if public and len(bits)==6 else None
+                    if not file:return self.respond(dict(error='완료한 산출물이 없습니다.'),404)
+                    mime='application/json' if file.suffix=='.json' else 'text/markdown' if file.suffix=='.md' else 'text/csv'
+                    self.send_response(200);self.send_header('Content-Type',mime);self.send_header('Content-Length',str(file.stat().st_size));self.send_header('Cache-Control','no-store');self.send_header('Content-Disposition','attachment; filename='+file.name);self.end_headers()
+                    with file.open('rb') as stream:self.copyfile(stream,self.wfile)
+                    return
+                if path.startswith('/api/public/runs'):
+                    if not public:return self.respond(dict(error='공개 입력 미등록'),404)
+                    if path=='/api/public/runs':return self.respond(public.list('forecast'))
+                    row=public.get(unquote(path.split('/')[-1]),'forecast')
+                    return self.respond(row if row else dict(error='실행 없음'),200 if row else 404)
                 if path=='/api/health':return self.respond(dict(mode='local',synthetic=True,projects=PROJECTS))
                 if path=='/api/runs':return self.respond(store.list(self.api_project()))
                 if path.startswith('/api/runs/'):
@@ -45,6 +62,9 @@ def serve(root, host='127.0.0.1', port=8765):
                 body=json.loads(self.rfile.read(size))
                 if not isinstance(body,dict):raise ValueError('객체 형식의 요청이 필요합니다.')
                 path=urlparse(self.path).path
+                if path=='/api/public/runs':
+                    if not public:raise ValueError('공개 입력 미등록')
+                    r=public.request('forecast',body.get('request_key'),body.get('config',{}));pool.submit(public.work_once);return self.respond(r,202)
                 if path=='/api/runs':
                     r=store.request(body.get('project_type'),body.get('request_key'),body.get('config'))
                     pool.submit(work_once,store)

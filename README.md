@@ -20,7 +20,7 @@ Python 3.11 이상, Python 추가 의존성 없이 실행합니다. 아래 명�
 PYTHONPATH=src python3 -m aurora serve --port 8765
 ```
 
-http://127.0.0.1:8765 에서 `합성 기준선 실행`을 누릅니다. Python이 합성 데이터를 생성하고 SQLite 작업 큐를 통해 계산·저장한 결과를 화면에 표시합니다. 이 모드는 로컬 합성 개발용이며 계정 인증은 없습니다. 서버는 loopback 주소에만 바인딩합니다. 중단은 Ctrl+C입니다.
+http://127.0.0.1:8765 에서 `합성 기준선 실행`을 누릅니다. Python이 합성 데이터를 생성하고 SQLite 작업 큐를 통해 계산·저장한 결과를 화면에 표시합니다. 프로젝트 기본 위치에서 UCI 가공 입력이 있으면 공개 거래 데이터셋도 선택할 수 있습니다([클라이언트·서버 연결](docs/FULLSTACK.md)). 이 모드는 로컬 개발용이며 계정 인증은 없습니다. 서버는 loopback 주소에만 바인딩합니다. 중단은 Ctrl+C입니다.
 
 ```sh
 PYTHONPATH=src python3 -m aurora demo --config configs/demo.json --output results/baseline.json
@@ -48,7 +48,7 @@ PYTHONPATH=src python3 -m aurora worker --once
 
 워커가 없으면 요청은 `queued`에 머뭅니다. 워커는 원자적 선점·120초 lease·30초 heartbeat·시도별 토큰을 사용합니다. 만료 작업은 최대 3회 선점하며, 취소되거나 만료된 시도의 완료는 반영하지 않습니다. 요청의 동일 키 재전송은 같은 실행을 반환하고 다른 설정 재사용은 거부합니다. 워커 프로세스가 연결 오류로 종료되면 다시 시작해야 합니다.
 
-초기 DB는 `projects`, `project_members`, `datasets`, `runs`와 RPC/RLS를 구현합니다. 합성 입력은 고정 생성 설정으로 등록하고, 결과는 `runs.result`의 버전 있는 JSONB로 저장합니다. 정규 관측·예측·재고·라벨 테이블과 브라우저 업로드/일반 아티팩트 다운로드는 후속 단계입니다. 합성 입력의 관리자 CLI 비공개 업로드/읽기는 구현했습니다. `aurora-artifacts` 버킷은 비공개이며 멤버십에 맞춘 읽기 정책만 준비했습니다. 서울 개발 프로젝트에서 실제 Auth 로그인/로그아웃·멤버 조회·접수/워커/결과·익명 차단·브라우저의 워커 RPC 거부를 검증했습니다. 합성 입력 Storage 업로드·읽기·해시 검증은 실제 서버에서 확인했으며 브라우저 업로드/일반 아티팩트 처리는 후속입니다.
+초기 DB는 `projects`, `project_members`, `datasets`, `runs`와 RPC/RLS를 구현합니다. 합성 입력은 고정 생성 설정으로 등록하고, 결과는 `runs.result`의 버전 있는 JSONB로 저장합니다. 정규 관측·예측·재고·라벨 테이블과 브라우저 업로드는 후속 단계입니다. 공개 거래 산출물 다운로드 코드는 추가했으며 새 SQL의 원격 적용은 승인 대기입니다([적용 절차](docs/FULLSTACK.md)). 합성 입력의 관리자 CLI 비공개 업로드/읽기는 구현했습니다. `aurora-artifacts` 버킷은 비공개이며 멤버십에 맞춘 읽기 정책만 준비했습니다. 서울 개발 프로젝트에서 실제 Auth 로그인/로그아웃·멤버 조회·접수/워커/결과·익명 차단·브라우저의 워커 RPC 거부를 검증했습니다. 합성 입력 Storage 업로드·읽기·해시 검증은 실제 서버에서 확인했으며 브라우저 업로드는 후속이며 공개 거래 산출물의 원격 마이그레이션·검증은 승인 대기입니다.
 
 서비스 키는 워커 환경에서만 사용합니다. `.env`, 결과 DB, 기업 원본, 교재·논문은 Git에 포함하지 않습니다. 클라이언트 설정 폼은 secret/service_role 키를 거부합니다. GitHub Pages에 배포하는 합성 예제 외의 실제 결과는 인증 후 Supabase에서 조회하도록 설계했습니다.
 
@@ -64,14 +64,14 @@ PYTHONPATH=src python3 -m aurora demo --output client/demo/baseline.json
 
 ## 검증
 
-Python 단위 테스트 28개: 손계산 예측, 미래 누수 방지, 재현성·동일 대상 평가, 입력·누락·0분모 처리, 중복 요청·동시 선점·만료·취소·재시도 한도·실제 계산 저장.
+Python 단위 테스트 45개(기존 28+공개 거래/재고 12+연결 5), JS 9개: 손계산 예측, 미래 누수 방지, 재현성·동일 대상 평가, 입력·누락·0분모 처리, 중복 요청·동시 선점·만료·취소·재시도 한도·실제 계산 저장.
 
 ```sh
 npm ci --ignore-scripts
 npm run test:sql
 ```
 
-PGlite PostgreSQL에서 실제 마이그레이션/seed와 21개 권한·RPC 검사를 실행합니다. Auth/Storage 스키마는 테스트 대역입니다. 실서비스 Auth, 네트워크, Supabase 호스팅 환경의 검증을 대신하지 않습니다.
+PGlite PostgreSQL에서 실제 마이그레이션/seed와 45개 권한·RPC 검사를 실행합니다. Auth/Storage 스키마는 테스트 대역입니다. 실서비스 Auth, 네트워크, Supabase 호스팅 환경의 검증을 대신하지 않습니다.
 
 `tests/test_ui.mjs`는 Playwright로 실제 로컬 계산, 탭·새로고침/선택 복원, 모바일 가로 넘침, 비밀 키 거부를 검사합니다. 별도로 설치된 Playwright와 Chrome을 사용하거나, 환경 변수 `PLAYWRIGHT_MODULE`, `CHROME_PATH`를 지정할 수 있습니다. 테스트 전에 로컬 서버를 시작합니다. `tests/test_modes.mjs`는 정적 미리보기와 Supabase REST/Auth 대역을 검사합니다.
 
@@ -141,3 +141,9 @@ PYTHONPATH=src python3 -m aurora demo --output results/baseline.json --report re
 `aurora-weekly-input-v1` 검증기가 중복 SKU/주·기간·단위·통화·수량·결측 상태를 검사합니다. 준비한 100 SKU/15,600관측을 비공개 Storage에 등록하고 워커가 해시 검증 후 실제 계산하도록 연결했습니다. 관리자 CLI 등록이며 브라우저 업로드는 후속입니다. 기존 DB/Storage 읽기 권한을 유지합니다.
 
 Pages의 데이터셋 선택에서 기본 50 SKU와 연구 참고 100 SKU의 저장 결과를 비교할 수 있습니다. Supabase 모드에서는 접근 가능한 ready 데이터셋을 선택해 새 계산을 요청하고 해당 자료의 실행 이력을 조회합니다. 100 SKU는 품절로 검열된 관측 출하량이며 잠재 수요·실제 회사 수요가 아닙니다. [파일 계약·등록·재현·남은 범위](docs/INPUTS.md).
+
+## 공개 실측 거래와 장기 평가
+
+UCI Online Retail II의 1,067,371행을 취득해 104주·상위 100 SKU의 주간 입력을 만들고 기존 6개 예측 후보에 적용했습니다. 앞 68주로 품목/모델을 정하고 4주 워밍업 뒤 32주를 순차 평가합니다. 장기 재고 grid·품목별 정책/비용 계약·의사결정 CSV·파일 해시 보고를 추가했습니다. [취득·집계·실행·실제 결과와 한계](docs/PUBLIC_RETAIL.md). Excel 변환만 선택 의존성 openpyxl이 필요합니다.
+
+공개자료 데이터셋 선택·서버 실행·요약·CSV 조회를 로컬 웹에 연결했고 Pages용 저장 결과도 준비했습니다. Supabase 워커·권한/서명 다운로드 코드는 구현했으며 원격 SQL 적용은 사용자 승인 대기입니다. [실행·저장 계약·검증·남은 작업](docs/FULLSTACK.md). Naive MAE 178.269에 비해 선택 모델 182.500으로 개선되지 않은 결과를 보존했습니다. 실제 재고·조달원가·품절은 미확보이며 기본 재고 비교는 금액 없는 수량 시나리오입니다.

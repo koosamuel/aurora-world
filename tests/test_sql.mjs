@@ -15,7 +15,7 @@ try {
  create table auth.users(id uuid primary key);
  create function auth.uid() returns uuid language sql as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;
  create function auth.role() returns text language sql as $$select current_setting('request.jwt.claim.role',true)$$;
- create table storage.buckets(id text primary key,name text,public boolean);
+ create table storage.buckets(id text primary key,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]);
  create table storage.objects(id uuid primary key default gen_random_uuid(),bucket_id text,name text);
  alter table storage.objects enable row level security;
  create function storage.foldername(text) returns text[] language sql as $$select (string_to_array($1,'/'))[1:array_length(string_to_array($1,'/'),1)-1]$$;
@@ -55,5 +55,45 @@ try {
  await role('authenticated',u);const cancel=await request('cancel');
  ok((await query('select public.request_cancel($1) as ok',[cancel.id])).rows[0].ok);
  await role('service_role');ok((await query('select public.claim_run() as r')).rows[0].r===null);
+
+ await db.exec('reset role');
+ await db.exec(await readFile(new URL('../supabase/migrations/202610270001_public_execution.sql',import.meta.url),'utf8'));
+ const pd='20000000-0000-4000-8000-000000000003';
+ await query("insert into public.datasets(id,project_id,name,version,synthetic,dataset_kind,status,generator_config) values($1,$2,'공개 거래','public-test',false,'public_retail','ready',$3::jsonb)",[pd,f,JSON.stringify({mode:'public_file_v1',skus:100,weeks:104})]);
+ await rejects(()=>query("insert into public.datasets(project_id,name,version,synthetic,dataset_kind,status,generator_config) values($1,'bad','bad-mode',false,'public_retail','ready','{}')",[f]));
+ await role('authenticated',u);
+ const pubrequest=async(key,config={})=>(await query('select public.request_forecast($1,$2,$3,$4::jsonb) as r',[f,pd,key,JSON.stringify(config)])).rows[0].r;
+ const pr=await pubrequest('public-ok');ok((await pubrequest('public-ok')).id===pr.id);
+ await rejects(()=>pubrequest('bad-setting',{horizon:4}));
+ await rejects(()=>pubrequest('bad-policy',{policy_inputs:[]}));
+ await rejects(()=>pubrequest('public-ok',{policy_inputs:{'UCI-12345':{initial_stock:1}}}));
+ await rejects(()=>query('select public.complete_public_run($1,$2,$3,$4)',[pr.id,job.token,'{}','[]']));
+ await role('service_role');const pj=(await query('select public.claim_run() as r')).rows[0].r;ok(pj.id===pr.id);
+ const ps={schema_version:'aurora-public-evaluation-v1',synthetic:false,inventory_is_scenario:true};
+ const files=['result.json','forecast.csv','inventory.csv','decisions.csv','report.md'].map(name=>({name,bucket:'aurora-artifacts',sha256:'a'.repeat(64),path:`${f}/runs/${pj.id}/attempt-${pj.attempt}/${'a'.repeat(64)}/${name}`,bytes:20,mime:name.endsWith('.json')?'application/json':name.endsWith('.md')?'text/markdown':'text/csv'}));
+ const finishPub=(token,meta=files)=>query('select public.complete_public_run($1,$2,$3::jsonb,$4::jsonb) as ok',[pj.id,token,JSON.stringify(ps),JSON.stringify(meta)]);
+ await rejects(()=>query('select public.complete_run($1,$2,$3::jsonb)',[pj.id,pj.token,JSON.stringify({schema_version:'aurora-baseline-v1',synthetic:true})]));
+ await rejects(()=>finishPub(pj.token,[]));
+ await rejects(()=>finishPub(pj.token)); // metadata alone cannot publish absent Storage files
+ await db.exec('reset role');
+ for(const a of files)await query("insert into storage.objects(bucket_id,name) values('aurora-artifacts',$1)",[a.path]);
+ await query("insert into storage.objects(bucket_id,name) values('aurora-artifacts',$1)",[f+'/inputs/'+'b'.repeat(64)+'.json']);
+ await role('service_role');
+ await rejects(()=>finishPub(pj.token,files.map((a,i)=>i===0?{...a,path:a.path.replace(f,l)}:a)));
+ await rejects(()=>finishPub(pj.token,files.map((a,i)=>i===0?{...a,bytes:50331649}:a)));
+ ok((await finishPub(job.token)).rows[0].ok===false);
+ ok((await finishPub(pj.token)).rows[0].ok===true);
+ ok((await query('select count(*)::int as n from public.artifacts')).rows[0].n===5);
+ await role('authenticated',u);
+ const ar=(await query('select * from public.artifacts')).rows;ok(ar.length===5);
+ ok((await query('select * from storage.objects')).rows.length===6);
+ const got=(await query('select public.request_artifact_download($1) as a',[ar[0].id])).rows[0].a;ok(got.sha256==='a'.repeat(64));
+ await rejects(()=>query("insert into public.artifacts(project_id,run_id,attempt,name,path,sha256,bytes,mime) values($1,$2,1,'report.md','fake',$3,20,'text/markdown')",[f,pj.id,'a'.repeat(64)]));
+ await role('authenticated',v);
+ ok((await query('select * from public.artifacts')).rows.length===0);
+ ok((await query('select * from storage.objects')).rows.length===0);
+ await rejects(()=>query('select public.request_artifact_download($1)',[ar[0].id]));
+ await role('anon');await rejects(()=>query('select public.request_artifact_download($1)',[ar[0].id]));
+ await db.exec('reset role');ok((await query('select count(*)::int as n from public.artifact_download_requests')).rows[0].n===1);
  console.log(`${checks} PostgreSQL/RLS checks passed (Supabase Auth/Storage test doubles; live service not connected).`);
 } finally {await db.close();}
