@@ -8,7 +8,6 @@
 | Makridakis 외, The M4 Competition: 100,000 time series and 61 forecasting methods, 2020, [DOI](https://doi.org/10.1016/j.ijforecast.2019.04.014), [공식 데이터](https://github.com/Mcompetitions/M4-methods) | naive·계절 naive 비교의 참조, prepare_data.py에서 Weekly Train 변동의 블록 재표집 | M4 전체 대회 재현·OWA·M4 최종 점수 비교. 합성 m=52와 M4 weekly m=1을 혼동하지 않음 |
 | Ingel 외, Correlated daily time series and forecasting in the M4 competition, 2020, [저자 공개본](https://arxiv.org/abs/2003.12796) | 시간 경계·계열 간 누수 방지 원칙의 참조 | correlator·통계 앙상블. 내려받은 주간 자료는 논문의 일별 실험과 다른 빈도 |
 | Ha & Eck, A Neural Representation of Sketch Drawings, 2017/ICLR2018, [Google Research](https://research.google/pubs/a-neural-representation-of-sketch-drawings/), [공식 데이터](https://github.com/googlecreativelab/quickdraw-dataset) | 공개 스케치 900개 표본에서 split을 나누고 회전/크기 변형해 아트워크 생성 | sketch-rnn 학습·논문 quickdraw-75 분할 재현·실제 봉제 패턴 추출 |
-
 | Kostenko & Hyndman, A note on the categorization of demand patterns, 2006, [저자 PDF](https://robjhyndman.com/papers/idcat.pdf) | ADI/CV²·기존 사분면 경계의 제한을 대조; 원점 이전 분류·변경·방법 배정 실험 | 논문의 정밀 분류 경계·최적 방법 배정 재현 |
 | Teunter·Syntetos·Babai, Intermittent demand: Linking forecasting to inventory obsolescence, 2011, [DOI](https://doi.org/10.1016/j.ejor.2011.05.018) | Croston/SBA/TSB의 독립 구현·고정 계수 비교; 계산식과 초기화는 [방법 문서](DECISIONS.md) | 논문 원 실험·최적 초기화·기업 재고 성과 재현 |
 
