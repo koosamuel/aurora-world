@@ -29,8 +29,8 @@ function renderSeries() {
 }
 function renderResult(data) {
   if(data.schema_version!=='aurora-baseline-v1'||data.synthetic!==true)throw new Error('지원하는 합성 기준선 결과가 아닙니다.');
-  result=data;$('empty-state').hidden=true;$('result-content').hidden=false;
-  $('metric-skus').textContent=fmt(data.quality.series);$('metric-weeks').textContent=`${data.config.weeks}주 · Seed ${data.config.seed}`;
+  result=data;$('input-notice').hidden=!data.input_manifest;$('input-notice').textContent=data.input_manifest?'관측 총출하량 입력 · 품절 '+data.quality.stockouts+'건. 잠재 수요와 다릅니다. 반품은 별도 기록하며, 아래 재고 비교의 단가는 공통 가상값 1,000원입니다.':'';$('empty-state').hidden=true;$('result-content').hidden=false;
+  $('metric-skus').textContent=fmt(data.quality.series);$('metric-weeks').textContent=`${data.config.weeks}주 · ${data.input_manifest?"입력 파일":"Seed "+data.config.seed}`;
   for(const [id,model] of [['metric-naive','naive'],['metric-seasonal','seasonal_naive']])$(''+id).textContent=fmt(data.paired_metrics.find(m=>m.model===model&&m.split==='test')?.mae);
   $('sku-select').replaceChildren(...data.series.map(s=>new Option(s.sku,s.sku)));
   const remembered=saved(`aurora-sku-${api.mode}`);if(data.series.some(s=>s.sku===remembered))$('sku-select').value=remembered;
@@ -48,6 +48,9 @@ async function selectRun(id, ticket=epoch) {
 }
 function updateControls() {
   const cloud=api.mode==='supabase',preview=api.mode==='preview';
+  const datasets=api.datasets||[];$('dataset-picker-label').hidden=!datasets.length;
+  $('dataset-picker').replaceChildren(...datasets.map(d=>new Option(d.name,d.id)));
+  if(api.dataset)$('dataset-picker').value=api.dataset.id;$('dataset-picker').disabled=busy;
   $('connection').textContent=cloud?(api.session?'Supabase · 로그인됨':'Supabase · 로그인 필요'):preview?'저장된 합성 결과 · 미리보기':'로컬 · 합성 계산';
   for(const id of ['skus','weeks'])$(id).disabled=cloud||preview;
   for(const id of ['horizon','season'])$(id).disabled=preview;
@@ -56,9 +59,9 @@ function updateControls() {
   $('login-form').hidden=!cloud;$('logout').hidden=!cloud||!api.session;
   for(const el of $('login-form').querySelectorAll('input,button[type="submit"]'))el.hidden=cloud&&!!api.session;
   $('auth-state').textContent=cloud?(api.session?`로그인: ${api.session.user.email} · 세션은 메모리에만 유지됩니다.`:'로그인 후 프로젝트 멤버 권한을 확인합니다.'):'로컬에서는 새로 계산합니다. GitHub Pages 미리보기는 미리 계산한 합성 결과를 표시합니다.';
-  $('dataset-label').textContent=cloud?(api.dataset?.name||'준비된 합성 데이터셋 없음'):preview?'고정 합성 스냅샷 · 50 SKU / 156주':'합성 주간 수요 · 요청마다 계산';
+  $('dataset-label').textContent=cloud?(api.dataset?.name||'준비된 합성 데이터셋 없음'):preview?(api.dataset?.name+' · 저장된 결과'):'합성 주간 수요 · 요청마다 계산';
   if(cloud&&api.dataset){$('skus').value=api.dataset.generator_config.skus;$('weeks').value=api.dataset.generator_config.weeks;}
-  if(preview){$('skus').value=50;$('weeks').value=156;$('horizon').value=4;$('season').value=52;}
+  if(preview){$('skus').value=api.dataset.generator_config.skus;$('weeks').value=156;$('horizon').value=4;$('season').value=52;}
   $('label-project').textContent='브라우저 합성 데모 · 로그인 없이 실행 · 검수는 현재 브라우저 세션에만 저장됩니다.';
 }
 async function refresh() {
@@ -74,7 +77,7 @@ async function refresh() {
   } catch(error){if(ticket===epoch)notice(error.message);}
 }
 async function changeMode(adapter) {
-  epoch++;clearTimeout(polling);api=adapter;selected=null;pendingRequest=null;busy=false;notice('');empty();$('run-list').replaceChildren();updateControls();await refresh();
+  epoch++;clearTimeout(polling);api=adapter;restoreDataset();selected=null;pendingRequest=null;busy=false;notice('');empty();$('run-list').replaceChildren();updateControls();await refresh();
 }
 $('run-form').addEventListener('submit',async e=>{
   e.preventDefault();if(busy)return;const ticket=epoch,adapter=api,c=config(),signature=JSON.stringify(c);
@@ -85,11 +88,13 @@ $('run-form').addEventListener('submit',async e=>{
   catch(error){if(ticket===epoch)notice(error.message);}
   finally{if(ticket===epoch){busy=false;updateControls();}}
 });
+function restoreDataset(){const id=saved(`aurora-dataset-${api.mode}`);const d=api.datasets?.find(d=>d.id===id);if(d)api.dataset=d;}
+$('dataset-picker').addEventListener('change',async()=>{const d=api.datasets?.find(d=>d.id===$('dataset-picker').value);if(!d)return;epoch++;viewSeq++;clearTimeout(polling);api.dataset=d;saved(`aurora-dataset-${api.mode}`,d.id);selected=null;pendingRequest=null;empty();notice('');updateControls();await refresh();});
 $('refresh').addEventListener('click',refresh);$('sku-select').addEventListener('change',renderSeries);
 $('download').addEventListener('click',()=>{if(!result)return;const url=URL.createObjectURL(new Blob([JSON.stringify(result,null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='aurora-synthetic-baseline.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);});
 $('settings-toggle').addEventListener('click',()=>{$('settings').hidden=!$('settings').hidden;$('settings-toggle').setAttribute('aria-expanded',String(!$('settings').hidden));});
 $('connect-form').addEventListener('submit',e=>{e.preventDefault();const fd=new FormData(e.currentTarget);try{changeMode(new SupabaseApi(fd.get('url').trim(),fd.get('key').trim()));}catch(error){notice(error.message);}});
-$('login-form').addEventListener('submit',async e=>{e.preventDefault();const adapter=api,ticket=epoch,fd=new FormData(e.currentTarget);try{await adapter.login(fd.get('email').trim(),fd.get('password'));if(ticket!==epoch)return;notice('');updateControls();await refresh();}catch(error){if(ticket===epoch){updateControls();notice(error.message);}}finally{e.target.elements.password.value='';}});
+$('login-form').addEventListener('submit',async e=>{e.preventDefault();const adapter=api,ticket=epoch,fd=new FormData(e.currentTarget);try{await adapter.login(fd.get('email').trim(),fd.get('password'));if(ticket!==epoch)return;restoreDataset();notice('');updateControls();await refresh();}catch(error){if(ticket===epoch){updateControls();notice(error.message);}}finally{e.target.elements.password.value='';}});
 $('logout').addEventListener('click',async()=>{const adapter=api;epoch++;selected=null;empty('로그아웃되었습니다');clearTimeout(polling);$('run-list').replaceChildren();try{await adapter.logout();}catch(error){notice(error.message);}finally{if(adapter===api)updateControls();}});
 $('demo-mode').addEventListener('click',async()=>{const old=api;if(old.mode==='supabase')await old.logout().catch(()=>{});await changeMode(await demoApi());});
 initLabeling();

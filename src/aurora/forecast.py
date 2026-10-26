@@ -139,8 +139,14 @@ def evaluate(series, c):
 def run_baseline(options=None):
     c = config_for(options)
     series = synthetic_data(c)
+    dates = [(date(2023, 1, 2) + timedelta(weeks=t)).isoformat() for t in range(c["weeks"])]
+    return run_series(series,c,dates,"synthetic-v1")
+
+
+def run_series(series,c,periods,dataset_version,input_manifest=None,input_quality=None):
     evaluation = evaluate(series, c)
-    dates = [(date(2023, 1, 2) + timedelta(weeks=t)).isoformat() for t in range(c["weeks"]+c["horizon"])]
+    last=date.fromisoformat(periods[-1])
+    dates=list(periods)+[(last+timedelta(weeks=t+1)).isoformat() for t in range(c["horizon"])]
     views = []
     for item in series:
         future = {}
@@ -155,12 +161,12 @@ def run_baseline(options=None):
     decisions = build(series, c)
     code_hash = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
     return dict(schema_version="aurora-baseline-v1", synthetic=True, config=c,
-                dataset_version="synthetic-v1", dataset_checksum=digest(series),
+                dataset_version=dataset_version, input_manifest=input_manifest, dataset_checksum=digest(series),
                 config_hash=digest(c), code_revision=code_hash,
                 split_version="fixed-origin-v1", splits=[dict(split=s, origin=o,
                     train_end=dates[o-1], target_start=dates[o], target_end=dates[o+c["horizon"]-1])
                     for s,o in split_origins(c)],
-                quality=dict(series=len(series), observations=c["skus"]*c["weeks"],
+                quality=input_quality or dict(series=len(series), observations=c["skus"]*c["weeks"],
                     missing=sum(s=="missing" for x in series for s in x["statuses"]),
                     returns=sum(s=="return" for x in series for s in x["statuses"]),
                     not_started=sum(s=="not_started" for x in series for s in x["statuses"])),

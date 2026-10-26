@@ -5,7 +5,7 @@ import threading
 import time
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError
-from .forecast import run_baseline
+from .registered import Remote,compute_job
 
 
 class SupabaseWorker:
@@ -34,7 +34,7 @@ class SupabaseWorker:
         thread=threading.Thread(target=heartbeat,daemon=True);thread.start()
         try:
             if job['task_type']!='forecast':raise ValueError('현재 워커는 수요예측 기준선만 지원합니다.')
-            result=run_baseline(job['generator_config'] | job['config'])
+            result=compute_job(Remote(),job)
             if lease_lost.is_set():raise RuntimeError('작업 선점이 만료됐습니다.')
             ok=self.rpc('complete_run',{'p_run_id':job['id'],'p_token':job['token'],'p_result':result,'p_error':None})
             if not ok:raise RuntimeError('만료되거나 취소된 실행 결과를 저장하지 않았습니다.')
