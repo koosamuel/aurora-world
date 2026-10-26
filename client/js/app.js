@@ -1,6 +1,7 @@
 import {demoApi,SupabaseApi} from './api.js';
 import {drawChart} from './chart.js';
 import {initLabeling} from './labeling.js';
+import {renderDecisions,renderDecisionSku} from './decision-view.js';
 const $=id=>document.getElementById(id);
 const names={queued:'대기',running:'계산 중',succeeded:'완료',failed:'실패',cancelled:'취소'};
 const modelNames={naive:'Naive',seasonal_naive:'계절 naive'};
@@ -22,6 +23,7 @@ for(const b of document.querySelectorAll('[data-tab]')) {
 function config() {return {skus:Number($('skus').value),weeks:Number($('weeks').value),horizon:Number($('horizon').value),season_length:Number($('season').value),validation_origins:3};}
 function renderSeries() {
   if(!result)return;const series=result.series.find(s=>s.sku===$('sku-select').value)||result.series[0];
+  renderDecisionSku(result.decisions,series.sku);
   saved(`aurora-sku-${api.mode}`,series.sku);drawChart($('chart'),series);
   $('series-note').textContent=`${series.sku} · ${series.pattern} · 결측·미개시·반품은 수요 0으로 채우지 않습니다. ${Object.entries(series.unavailable).filter(([,v])=>v).map(([k,v])=>`${modelNames[k]}: ${v}`).join(' / ')}`;
 }
@@ -35,7 +37,7 @@ function renderResult(data) {
   $('metrics-table').replaceChildren(...data.paired_metrics.map(m=>{const tr=document.createElement('tr');for(const value of [m.split==='test'?'최종 보류':'검증',modelNames[m.model],fmt(m.n),fmt(m.mae),fmt(m.bias),`${fmt(m.mase)} (n=${m.mase_n})`]){const td=document.createElement('td');td.textContent=value;tr.append(td);}return tr;}));
   const {series,predictions,skipped,...manifest}=data;
   manifest.exclusion_counts=skipped.reduce((out,s)=>(out[s.reason]=(out[s.reason]||0)+1,out),{});
-  $('manifest').textContent=JSON.stringify(manifest,null,2);renderSeries();
+  $('manifest').textContent=JSON.stringify({...manifest,decisions:undefined},null,2);renderDecisions(data.decisions,$('sku-select').value);renderSeries();
 }
 async function selectRun(id, ticket=epoch) {
   const adapter=api, viewTicket=++viewSeq;

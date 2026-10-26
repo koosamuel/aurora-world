@@ -9,6 +9,9 @@
 | Ingel 외, Correlated daily time series and forecasting in the M4 competition, 2020, [저자 공개본](https://arxiv.org/abs/2003.12796) | 시간 경계·계열 간 누수 방지 원칙의 참조 | correlator·통계 앙상블. 내려받은 주간 자료는 논문의 일별 실험과 다른 빈도 |
 | Ha & Eck, A Neural Representation of Sketch Drawings, 2017/ICLR2018, [Google Research](https://research.google/pubs/a-neural-representation-of-sketch-drawings/), [공식 데이터](https://github.com/googlecreativelab/quickdraw-dataset) | 공개 스케치 900개 표본에서 split을 나누고 회전/크기 변형해 아트워크 생성 | sketch-rnn 학습·논문 quickdraw-75 분할 재현·실제 봉제 패턴 추출 |
 
+| Kostenko & Hyndman, A note on the categorization of demand patterns, 2006, [저자 PDF](https://robjhyndman.com/papers/idcat.pdf) | ADI/CV²·기존 사분면 경계의 제한을 대조; 원점 이전 분류·변경·방법 배정 실험 | 논문의 정밀 분류 경계·최적 방법 배정 재현 |
+| Teunter·Syntetos·Babai, Intermittent demand: Linking forecasting to inventory obsolescence, 2011, [DOI](https://doi.org/10.1016/j.ejor.2011.05.018) | Croston/SBA/TSB의 독립 구현·고정 계수 비교; 계산식과 초기화는 [방법 문서](DECISIONS.md) | 논문 원 실험·최적 초기화·기업 재고 성과 재현 |
+
 새 PDF 2편은 프로젝트 과목별 참고자료의 통계·컴퓨터비전 폴더에 원문과 같은 제목의 개요로 정리했다. 기존 MASE 논문은 중복 다운로드하지 않고 기존 보유본을 연결했다. M4 전체 결과 논문은 온라인 서지 참조이며 PDF 확보 완료로 표시하지 않는다. 공식 M4 Competitors Guide는 접근 HTTP 403으로 미확보를 기록했다.
 
 공식 홈페이지 참고: [오로라월드](https://auroraworld.com/ko/business/overview), [공식 Palm Pals 몰](https://palmpals.co.kr/). 공개 제품 사진을 실제 부품 정답으로 취급하지 않으며 원본 사진을 배포하지 않았다. 가상 브랜드/디자인/원가/거래/정답과 실제 상품 사실을 구분한다.

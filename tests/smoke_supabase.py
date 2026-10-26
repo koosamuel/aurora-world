@@ -44,11 +44,14 @@ worker=SupabaseWorker();worker.once()
 rows=call('/rest/v1/runs?id=eq.'+run['id']+'&project_id=eq.'+project,token=token,key=public)
 assert rows[0]['status']=='succeeded',rows[0]['status']
 result=rows[0]['result'];assert result['synthetic'] and result['quality']['series']==50
+assert result['decisions']['schema_version']=='aurora-decisions-v1'
+assert len(result['decisions']['paired_metrics'])==8
+assert len(result['decisions']['inventory']['scenarios'])==4
 try:call('/rest/v1/rpc/claim_run','POST',{},token=token,key=public);raise AssertionError('Browser could claim worker job')
 except RuntimeError as e:assert 'HTTP 40' in str(e)
 try:anonymous=call('/rest/v1/runs?select=id',key=public);assert anonymous==[]
 except RuntimeError as e:assert 'HTTP 40' in str(e)
 call('/auth/v1/logout','POST',{},token=token,key=public)
-report={'passed':True,'project_ref':'unajjkuccpqggulpqhmo','region':'ap-northeast-2','run_id':run['id'],'status':'succeeded','checks':['real Auth login/logout','RLS member projects','idempotent RPC request','service worker claim/compute/complete','completed result fetch','browser worker-RPC denied','anonymous results denied'],'paired_metrics':result['paired_metrics'],'test_user':'synthetic test identity only; credentials in ignored local results, not repository'}
+report={'passed':True,'project_ref':'unajjkuccpqggulpqhmo','region':'ap-northeast-2','run_id':run['id'],'status':'succeeded','checks':['real Auth login/logout','RLS member projects','idempotent RPC request','service worker claim/compute/complete','completed baseline + segments + model selection + inventory result fetch','browser worker-RPC denied','anonymous results denied'],'paired_metrics':result['paired_metrics'],'test_user':'synthetic test identity only; credentials in ignored local results, not repository'}
 (root/'results/live_supabase_smoke.json').write_text(json.dumps(report,ensure_ascii=False,indent=2))
 print(json.dumps({k:v for k,v in report.items() if k!='paired_metrics'},ensure_ascii=False,indent=2))

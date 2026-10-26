@@ -3,6 +3,7 @@ import json
 import sqlite3
 import time
 import uuid
+from contextlib import contextmanager
 from pathlib import Path
 from .forecast import config_for, digest, run_baseline
 
@@ -21,10 +22,13 @@ class Store:
                 attempt INTEGER NOT NULL DEFAULT 0, token TEXT, lease REAL,
                 created REAL NOT NULL, updated REAL NOT NULL, result TEXT, error TEXT,
                 UNIQUE(project_type,request_key))''')
+    @contextmanager
     def connect(self):
         db=sqlite3.connect(self.path, timeout=15)
         db.row_factory=sqlite3.Row
-        return db
+        try:
+            with db:yield db
+        finally:db.close()
     @staticmethod
     def decode(row, detail=False):
         if row is None: return None

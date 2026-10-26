@@ -151,6 +151,8 @@ def run_baseline(options=None):
             history=[dict(period=dates[t], value=item["values"][t], status=item["statuses"][t])
                      for t in range(max(0,c["weeks"]-26),c["weeks"])],
             future_periods=dates[c["weeks"]:], forecast=future, unavailable=unavailable))
+    from .decisions import build
+    decisions = build(series, c)
     code_hash = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
     return dict(schema_version="aurora-baseline-v1", synthetic=True, config=c,
                 dataset_version="synthetic-v1", dataset_checksum=digest(series),
@@ -162,4 +164,4 @@ def run_baseline(options=None):
                     missing=sum(s=="missing" for x in series for s in x["statuses"]),
                     returns=sum(s=="return" for x in series for s in x["statuses"]),
                     not_started=sum(s=="not_started" for x in series for s in x["statuses"])),
-                series=views, **evaluation)
+                series=views, decisions=decisions, **evaluation)

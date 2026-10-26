@@ -2,7 +2,7 @@
 
 오로라월드 과제용 코드. 저장소 주소: https://github.com/koosamuel/aurora-world
 
-한 화면에서 **수요예측·운전자본**과 **패턴 부위명 자동 라벨링** 탭을 구분합니다. 현재는 합성 데이터 기준선이 동작하며, 라벨링·재고 최적화는 구현 예정입니다. 프로젝트 목표·전체 진행 기준은 상위 `00_프로젝트_목차.md`, 상세 후속 설계는 `01_기획_회의/04_구현계획.md`에서 관리합니다.
+한 화면에서 **수요예측·운전자본**과 **패턴 부위명 자동 라벨링** 탭을 구분합니다. 합성 기준선·수요 세그먼트·모델 선택·재고 비교와 패턴 라벨링·검수 데모가 동작합니다. 기업 입력과 운영 재학습은 후속입니다. 프로젝트 목표·전체 진행 기준은 상위 `00_프로젝트_목차.md`, 상세 후속 설계는 `01_기획_회의/04_구현계획.md`에서 관리합니다.
 
 
 - 배포 화면: https://koosamuel.github.io/aurora-world/
@@ -64,7 +64,7 @@ PYTHONPATH=src python3 -m aurora demo --output client/demo/baseline.json
 
 ## 검증
 
-Python 단위 테스트 10개: 손계산 예측, 미래 누수 방지, 재현성·동일 대상 평가, 입력·누락·0분모 처리, 중복 요청·동시 선점·만료·취소·재시도 한도·실제 계산 저장.
+Python 단위 테스트 19개: 손계산 예측, 미래 누수 방지, 재현성·동일 대상 평가, 입력·누락·0분모 처리, 중복 요청·동시 선점·만료·취소·재시도 한도·실제 계산 저장.
 
 ```sh
 npm ci --ignore-scripts
@@ -81,7 +81,7 @@ PGlite PostgreSQL에서 실제 마이그레이션/seed와 21개 권한·RPC 검�
 - `src/aurora/forecast.py`: 합성 생성·기준선·시간순 평가
 - `src/aurora/jobs.py`, `server.py`: 로컬 큐·HTTP 데모
 - `src/aurora/cloud.py`: Supabase 배치 워커
-- `configs/demo.json`: 예측 가정 A01~A07·A10의 초기 설정 (A08~A09 재고 가정은 미구현)
+- `configs/demo.json`: 예측 가정 A01~A07·A10의 초기 설정 (A08~A09의 버전 있는 재고 가정은 `decisions.py`의 SETTINGS와 결과 JSON에 기록)
 - `supabase/`: 초기 SQL·멤버십 등록 예시
 - `tests/`: 계산·작업·PostgreSQL/RLS·브라우저 검증
 - `results/`: 로컬 실행 데이터 (Git 제외)
@@ -125,3 +125,13 @@ node --test tests/test_labeling.mjs
 ```
 
 `label-model.js`는 명칭 후보와 4개 기하 특성의 5-nearest neighbors 추론을 분리합니다. 브라우저 추론과 Python 평가의 일치·가족군 분리·수동 승인을 검사합니다. 공개 배포에는 자체 생성 윤곽·학습 특성/부위군·합성 정답을 포함하며 회사 자료·Quick Draw 원본은 포함하지 않습니다.
+
+## 세그먼트·모델 선택·재고 비교
+
+새 예측 실행에는 `decisions` 확장이 함께 저장됩니다. ADI/CV²와 분류 변경, 6개 후보·검증 선택/임시 세그먼트 규칙의 동일 대상 평가, 경험 구간, Naive/선택×버퍼 유무의 재고·서비스 비교를 화면에서 확인합니다. Pages는 이 확장을 담은 고정 합성 스냅샷이며 로컬/Supabase 워커는 새 실행마다 계산합니다. 기존 실행에 확장이 없으면 새로 실행하세요.
+
+```sh
+PYTHONPATH=src python3 -m aurora demo --output results/baseline.json --report results/decision_report.md
+```
+
+기본 공통 보류 146관측에서 검증 선택 MAE 1.663, Naive 2.192입니다. 버퍼 없는 재고정책은 95% 충족률에 미달하며 투자액 감소를 성공으로 판정하지 않습니다. 조건부 차이는 두 방식 모두 SKU별 서비스 목표를 충족하는 경우만 집계합니다. 평가 4주·소수 검증 오차의 합성 예시이며 기업 절감액을 뜻하지 않습니다. [방법·초기화·누락 처리·사건 순서·제외/한계](docs/DECISIONS.md).
