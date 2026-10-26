@@ -4,6 +4,14 @@
 
 한 화면에서 **수요예측·운전자본**과 **패턴 부위명 자동 라벨링** 탭을 구분합니다. 현재는 합성 데이터 기준선이 동작하며, 라벨링·재고 최적화는 구현 예정입니다. 프로젝트 목표·전체 진행 기준은 상위 `00_프로젝트_목차.md`, 상세 후속 설계는 `01_기획_회의/04_구현계획.md`에서 관리합니다.
 
+
+- 배포 화면: https://koosamuel.github.io/aurora-world/
+- 가상 이미지·데이터 미리보기: https://koosamuel.github.io/aurora-world/demo-data.html
+- Supabase 서버: https://supabase.com/dashboard/project/unajjkuccpqggulpqhmo (ai-applications / South Korea, Seoul / ap-northeast-2)
+- 서버 SQL 코드: https://github.com/koosamuel/aurora-world/tree/main/supabase
+
+GitHub 저장소는 공개이며 Pages 게시·고정 합성 데모·실제 Supabase Auth→실행→로컬 워커→결과 표시를 확인했습니다. 데이터·Auth·RPC는 Supabase에, Python 워커는 개발 PC에 있습니다. 실제 팀원용 Auth 사용자·멤버십 등록과 상시 워커 호스팅은 후속 운영 설정입니다.
+
 ## 로컬에서 바로 실행
 
 Python 3.11 이상, Python 추가 의존성 없이 실행합니다. 아래 명령은 이 README가 있는 코드 폴더에서 실행합니다.
@@ -52,7 +60,7 @@ PYTHONPATH=src python3 -m aurora worker --once
 PYTHONPATH=src python3 -m aurora demo --output client/demo/baseline.json
 ```
 
-`.github/workflows/pages.yml`은 수동 실행용입니다. GitHub 저장소의 Pages source를 GitHub Actions로 지정한 후 실행하며 `client/`만 게시합니다. Supabase 개발 프로젝트와 초기 SQL 적용·실제 연결 검증을 완료했습니다. GitHub 저장소는 생성했으며, 사용자가 승인한 공개 전환과 Pages 게시 결과는 프로젝트 구현 노트에 기록합니다.
+`.github/workflows/pages.yml`은 수동 실행용입니다. GitHub 저장소의 Pages source를 GitHub Actions로 지정한 후 실행하며 `client/`만 게시합니다. Supabase 개발 프로젝트와 초기 SQL 적용·실제 연결 검증을 완료했습니다. GitHub 공개 전환과 Pages 게시·실제 화면 검증을 완료했으며 확정 주소와 검사 근거는 프로젝트 구현 노트에 기록했습니다.
 
 ## 검증
 
