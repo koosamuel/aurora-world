@@ -1,5 +1,6 @@
 import {demoApi,SupabaseApi} from './api.js';
 import {drawChart} from './chart.js';
+import {initLabeling} from './labeling.js';
 const $=id=>document.getElementById(id);
 const names={queued:'대기',running:'계산 중',succeeded:'완료',failed:'실패',cancelled:'취소'};
 const modelNames={naive:'Naive',seasonal_naive:'계절 naive'};
@@ -56,7 +57,7 @@ function updateControls() {
   $('dataset-label').textContent=cloud?(api.dataset?.name||'준비된 합성 데이터셋 없음'):preview?'고정 합성 스냅샷 · 50 SKU / 156주':'합성 주간 수요 · 요청마다 계산';
   if(cloud&&api.dataset){$('skus').value=api.dataset.generator_config.skus;$('weeks').value=api.dataset.generator_config.weeks;}
   if(preview){$('skus').value=50;$('weeks').value=156;$('horizon').value=4;$('season').value=52;}
-  $('label-project').textContent=cloud?`라벨링 프로젝트: ${api.projects.find(p=>p.project_type==='labeling')?.name||'로그인·멤버 등록 후 확인 가능'}. 모델·업로드 기능은 구현 예정입니다.`:'라벨링 전용 공간입니다. 모델·업로드 기능은 구현 예정입니다.';
+  $('label-project').textContent='브라우저 합성 데모 · 로그인 없이 실행 · 검수는 현재 브라우저 세션에만 저장됩니다.';
 }
 async function refresh() {
   const ticket=epoch,adapter=api;clearTimeout(polling);
@@ -89,6 +90,7 @@ $('connect-form').addEventListener('submit',e=>{e.preventDefault();const fd=new 
 $('login-form').addEventListener('submit',async e=>{e.preventDefault();const adapter=api,ticket=epoch,fd=new FormData(e.currentTarget);try{await adapter.login(fd.get('email').trim(),fd.get('password'));if(ticket!==epoch)return;notice('');updateControls();await refresh();}catch(error){if(ticket===epoch){updateControls();notice(error.message);}}finally{e.target.elements.password.value='';}});
 $('logout').addEventListener('click',async()=>{const adapter=api;epoch++;selected=null;empty('로그아웃되었습니다');clearTimeout(polling);$('run-list').replaceChildren();try{await adapter.logout();}catch(error){notice(error.message);}finally{if(adapter===api)updateControls();}});
 $('demo-mode').addEventListener('click',async()=>{const old=api;if(old.mode==='supabase')await old.logout().catch(()=>{});await changeMode(await demoApi());});
+initLabeling();
 tab(location.hash.slice(2));
 const configured=window.AURORA_CONFIG;
 if(configured?.supabaseUrl){$('connect-form').elements.url.value=configured.supabaseUrl;$('connect-form').elements.key.value=configured.publishableKey;}
