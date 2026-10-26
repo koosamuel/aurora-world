@@ -1,0 +1,1 @@
+{"name":"aurora-world","private":true,"type":"module","scripts":{"test:sql":"node tests/test_sql.mjs"},"devDependencies":{"@electric-sql/pglite":"0.5.11"}}

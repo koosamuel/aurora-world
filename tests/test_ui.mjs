@@ -1,0 +1,33 @@
+import assert from 'node:assert/strict';
+const {chromium}=await import(process.env.PLAYWRIGHT_MODULE||'playwright');
+const browser=await chromium.launch({headless:true, ...(process.env.CHROME_PATH?{executablePath:process.env.CHROME_PATH}:{})});
+const page=await browser.newPage({viewport:{width:1440,height:1000}});const errors=[];
+page.on('pageerror',e=>errors.push(e.message));
+try {
+ await page.goto(process.env.AURORA_TEST_URL||'http://127.0.0.1:8765');
+ await page.getByText('로컬 · 합성 계산',{exact:true}).waitFor();
+ await page.locator('#run').click();
+ await page.locator('#result-content').waitFor({state:'visible'});
+ assert.equal(await page.locator('#metric-skus').textContent(),'50');
+ assert.equal(await page.locator('#metrics-table tr').count(),4);
+ assert.equal(await page.locator('#chart svg').count(),1);
+ await page.locator('#sku-select').selectOption('SKU-005');
+ await page.locator('#tab-labeling').click();
+ assert.equal(await page.locator('#forecast-panel').isVisible(),false);
+ assert.equal(await page.locator('#labeling-panel').isVisible(),true);
+ await page.reload();await page.locator('#labeling-panel').waitFor({state:'visible'});
+ await page.locator('#tab-forecast').click();await page.locator('#result-content').waitFor({state:'visible'});
+ assert.equal(await page.locator('#sku-select').inputValue(),'SKU-005');
+ await page.locator('#sku-select').selectOption('SKU-003');
+ await page.screenshot({path:'/tmp/aurora-desktop.png',fullPage:true});
+ await page.setViewportSize({width:390,height:844});
+ await page.screenshot({path:'/tmp/aurora-mobile.png',fullPage:true});
+ assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'mobile overflow');
+ await page.locator('#settings-toggle').click();
+ await page.locator('[name=url]').fill('https://example.supabase.co');
+ await page.locator('[name=key]').fill('sb_secret_this-is-not-a-client-key');
+ await page.locator('#connect-form button[type=submit]').click();
+ assert.match(await page.locator('#notice').textContent(),/공개/);
+ assert.deepEqual(errors,[]);
+ console.log('UI passed: live calculation, chart/metrics, isolated tabs, refresh + selection restore, mobile layout, secret-key rejection.');
+}finally{await browser.close();}

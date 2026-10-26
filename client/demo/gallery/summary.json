@@ -1,0 +1,65 @@
+{
+  "synthetic": true,
+  "version": "research-informed-synthetic-v1",
+  "counts": {
+    "products.jsonl": 100,
+    "forecast/sales_observations.jsonl": 15600,
+    "forecast/inventory_ledger.jsonl": 15600,
+    "forecast/purchase_orders.jsonl": 11372,
+    "forecast/calibration.jsonl": 100,
+    "evaluation_only/latent_demand.jsonl": 15600,
+    "patterns/pieces.jsonl": 1200,
+    "patterns/labels.jsonl": 1200,
+    "patterns/name_mapping.jsonl": 1200,
+    "patterns/bom.jsonl": 1200,
+    "artworks/index.jsonl": 100
+  },
+  "split_counts": {
+    "train": 70,
+    "validation": 15,
+    "test": 15
+  },
+  "paired_metrics": [
+    {
+      "split": "validation",
+      "model": "naive",
+      "n": 1040,
+      "skus": 90,
+      "mae": 3.5673076923076925,
+      "bias": -0.6423076923076924,
+      "mase": 0.7732341376019679,
+      "mase_n": 920
+    },
+    {
+      "split": "validation",
+      "model": "seasonal_naive",
+      "n": 1040,
+      "skus": 90,
+      "mae": 4.897115384615384,
+      "bias": -0.7432692307692308,
+      "mase": 0.9689186835721033,
+      "mase_n": 920
+    },
+    {
+      "split": "test",
+      "model": "naive",
+      "n": 350,
+      "skus": 90,
+      "mae": 5.5285714285714285,
+      "bias": 0.27714285714285714,
+      "mase": 1.048414633256539,
+      "mase_n": 310
+    },
+    {
+      "split": "test",
+      "model": "seasonal_naive",
+      "n": 350,
+      "skus": 90,
+      "mae": 5.051428571428572,
+      "bias": -0.26857142857142857,
+      "mase": 1.00510403148146,
+      "mase_n": 310
+    }
+  ],
+  "attribution": "Artwork derivatives: Google, Inc. / Quick, Draw! contributors, CC-BY-4.0. Modified by rotation/scaling. Pattern templates: generated synthetic shapes; no company approval."
+}

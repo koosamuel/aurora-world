@@ -1,0 +1,9 @@
+{
+  "seed": 42,
+  "skus": 50,
+  "weeks": 156,
+  "horizon": 4,
+  "season_length": 52,
+  "validation_origins": 3,
+  "assumption_version": "demo-A01-A11-v1"
+}
