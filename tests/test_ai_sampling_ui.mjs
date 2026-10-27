@@ -30,6 +30,6 @@ try{
  await page.setViewportSize({width:390,height:844});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));await page.locator('.ai-panel').screenshot({path:'/tmp/aurora-ai-mobile.png'});
  await page.locator('#label-run').click();await page.locator('#label-workspace').waitFor({state:'visible'});assert.equal(await page.locator('#label-rows tr').count(),12);
  assert.equal(posts,0);assert.deepEqual(errors,[]);
- await writeFile('/tmp/aurora-ai-ui.json',JSON.stringify({base,pages:!!process.env.AURORA_PAGES,posts,errors,checks:['real local inference / refresh / PNG download','three saved AI comparisons','explicit failed output','512px images','two tabs','mobile no overflow','PAT regression']},null,2));
- console.log('AI UI passed: real local inference, persisted lookup, hash-verified PNG download, saved results, failure, mobile, two tabs and PAT.');
+ await writeFile('/tmp/aurora-ai-ui.json',JSON.stringify({base,pages:!!process.env.AURORA_PAGES,posts,errors,checks:[...(!process.env.AURORA_PAGES?['real local inference / refresh / PNG download']:[]),'three saved AI comparisons','explicit failed output','512px images','two tabs','mobile no overflow','PAT regression']},null,2));
+ console.log(process.env.AURORA_PAGES?'AI Pages passed: saved real inference, hash-verified images, explicit failure, mobile, two tabs, PAT and zero POSTs.':'AI local UI passed: real inference, persisted lookup, hash-verified PNG download, saved results, failure, mobile, two tabs and PAT.');
 }finally{await browser.close();}
