@@ -1,2 +1,5 @@
 # Generated third-party shader bundle; review tools/browser/sample-viewer.js.
 client/vendor/sample-viewer.js -diff
+
+# Preserve the exact RFC4180 CRLF/BOM CSV bytes used by report SHA-256 manifests.
+client/demo/effects/artifacts/**/*.csv -text whitespace=cr-at-eol

@@ -1,0 +1,28 @@
+﻿product_id,arm,event_type,event_id,occurred_at,quantity,bom_reason,description
+SYN-BUNNY,baseline,physical_samples,MAKE-1,2026-09-03T09:00:00Z,1,,
+SYN-BUNNY,baseline,physical_samples,MAKE-2,2026-09-10T09:00:00Z,2,,
+SYN-BUNNY,baseline,bom_changes,BOM-1,2026-09-05T09:00:00Z,,error_correction,합성 원단 수량 기입 오류 수정
+SYN-BUNNY,baseline,bom_changes,BOM-2,2026-09-11T09:00:00Z,,design_change,합성 디자인 조건 변경
+SYN-BUNNY,pilot,physical_samples,PILOT-MAKE-1,2026-10-03T09:00:00Z,1,,
+SYN-BUNNY,pilot,bom_changes,PILOT-DESIGN-1,2026-10-07T09:00:00Z,,design_change,합성 정상 디자인 변경 · 오류 수정과 구분
+SYN-COW,baseline,physical_samples,MAKE-1,2026-09-03T09:00:00Z,1,,
+SYN-COW,baseline,physical_samples,MAKE-2,2026-09-10T09:00:00Z,2,,
+SYN-COW,baseline,bom_changes,BOM-1,2026-09-05T09:00:00Z,,error_correction,합성 원단 수량 기입 오류 수정
+SYN-COW,baseline,bom_changes,BOM-2,2026-09-11T09:00:00Z,,design_change,합성 디자인 조건 변경
+SYN-COW,pilot,physical_samples,PILOT-MAKE-1,2026-10-03T09:00:00Z,2,,
+SYN-COW,pilot,physical_samples,PILOT-MAKE-2,2026-10-14T09:00:00Z,2,,
+SYN-COW,pilot,bom_changes,PILOT-DESIGN-1,2026-10-07T09:00:00Z,,design_change,합성 정상 디자인 변경 · 오류 수정과 구분
+SYN-COW,pilot,bom_changes,PILOT-ERROR-1,2026-10-05T09:00:00Z,,error_correction,합성 수량 기입 오류 수정
+SYN-COW,pilot,bom_changes,PILOT-ERROR-2,2026-10-06T09:00:00Z,,error_correction,합성 수량 기입 오류 수정
+SYN-CAT,baseline,physical_samples,MAKE-1,2026-09-03T09:00:00Z,1,,
+SYN-CAT,baseline,physical_samples,MAKE-2,2026-09-10T09:00:00Z,2,,
+SYN-CAT,baseline,bom_changes,BOM-1,2026-09-05T09:00:00Z,,error_correction,합성 원단 수량 기입 오류 수정
+SYN-CAT,baseline,bom_changes,BOM-2,2026-09-11T09:00:00Z,,design_change,합성 디자인 조건 변경
+SYN-CAT,pilot,physical_samples,PILOT-MAKE-1,2026-10-03T09:00:00Z,1,,
+SYN-CAT,pilot,bom_changes,PILOT-DESIGN-1,2026-10-07T09:00:00Z,,unknown,합성 정상 디자인 변경 · 오류 수정과 구분
+SYN-CACTUS,baseline,physical_samples,MAKE-1,2026-09-03T09:00:00Z,1,,
+SYN-CACTUS,baseline,physical_samples,MAKE-2,2026-09-10T09:00:00Z,2,,
+SYN-CACTUS,baseline,bom_changes,BOM-1,2026-09-05T09:00:00Z,,error_correction,합성 원단 수량 기입 오류 수정
+SYN-CACTUS,baseline,bom_changes,BOM-2,2026-09-11T09:00:00Z,,design_change,합성 디자인 조건 변경
+SYN-CACTUS,pilot,physical_samples,PILOT-MAKE-1,2026-10-03T09:00:00Z,1,,
+SYN-CACTUS,pilot,bom_changes,PILOT-DESIGN-1,2026-10-07T09:00:00Z,,design_change,합성 정상 디자인 변경 · 오류 수정과 구분

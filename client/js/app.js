@@ -1,3 +1,4 @@
+import {initSamplingEffects} from './sampling-effect-view.js';
 import {initPatternLinks} from './pattern-link-view.js';
 import {initGeneration} from './generation-view.js';
 import {initSampleReviews} from './sample-review-view.js';
@@ -119,6 +120,7 @@ initGeneration();
 initAISampling();
 initSampleReviews();
 initPatternLinks();
+initSamplingEffects();
 tab(location.hash.slice(2));
 const configured=window.AURORA_CONFIG;
 if(configured?.supabaseUrl){$('connect-form').elements.url.value=configured.supabaseUrl;$('connect-form').elements.key.value=configured.publishableKey;}

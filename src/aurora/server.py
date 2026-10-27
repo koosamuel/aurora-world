@@ -23,6 +23,8 @@ def serve(root, host='127.0.0.1', port=8765, public_input=None, reference_root=N
     reviews=ReviewStore(root,sampling,generation,ai)
     from .pattern_links import PatternLinks
     pattern_links=PatternLinks(root,reviews)
+    from .sampling_effects import EffectStore, decode as effect_decode
+    effects=EffectStore(root,pattern_links)
     pool=ThreadPoolExecutor(max_workers=2)
     if public_input is None:public_input=root.parent/'04_데이터/가공/2026-10-26_UCI_Online_Retail_II/weekly.json'
     from .public_jobs import PublicStore
@@ -44,6 +46,19 @@ def serve(root, host='127.0.0.1', port=8765, public_input=None, reference_root=N
             if not self.allowed_host():return self.respond(dict(error='로컬 호스트만 허용됩니다.'),403)
             path=urlparse(self.path).path
             try:
+                if path.startswith('/api/sampling-effects/'):
+                    if urlparse(self.path).query:raise ValueError('효과 API 쿼리 거부')
+                    if path=='/api/sampling-effects/catalog':return self.respond(effects.catalog())
+                    if path=='/api/sampling-effects/examples/six-products':return self.respond(effects.example())
+                    bits=path.split('/')
+                    if len(bits) in (5,6) and bits[3]=='reports':
+                        row=effects.get(unquote(bits[4]),int(bits[5]) if len(bits)==6 else None)
+                        return self.respond(row if row else dict(error='효과 보고서 없음'),200 if row else 404)
+                    if len(bits)==7 and bits[3]=='artifacts':
+                        p=effects.artifact(unquote(bits[4]),int(bits[5]),bits[6])
+                        if not p:return self.respond(dict(error='보고 파일 없음'),404)
+                        raw=p.read_bytes();self.send_response(200);self.send_header('Content-Type','application/json' if p.suffix=='.json' else 'text/csv; charset=utf-8' if p.suffix=='.csv' else 'text/markdown; charset=utf-8');self.send_header('Content-Length',str(len(raw)));self.send_header('Cache-Control','no-store');self.send_header('X-Content-Type-Options','nosniff');self.send_header('Content-Disposition','attachment; filename='+p.name);self.end_headers();self.wfile.write(raw);return
+                    return self.respond(dict(error='지원하지 않는 효과 경로'),404)
                 if path.startswith('/api/pattern-links/'):
                     if urlparse(self.path).query:raise ValueError('패턴 연결 API 쿼리 거부')
                     if path=='/api/pattern-links/catalog':return self.respond(pattern_links.catalog())
@@ -144,8 +159,11 @@ def serve(root, host='127.0.0.1', port=8765, public_input=None, reference_root=N
             try:
                 size=int(self.headers.get('Content-Length','0'))
                 path=urlparse(self.path).path
-                limit=SAMPLING_BYTES if path in ('/api/sampling/validate','/api/sampling/briefs') else 65536
+                limit=SAMPLING_BYTES if path in ('/api/sampling/validate','/api/sampling/briefs') else 128*1024 if path=='/api/sampling-effects/reports' else 65536
                 if not 0<size<=limit:raise ValueError('요청 크기를 확인하세요.')
+                if path=='/api/sampling-effects/reports':
+                    if urlparse(self.path).query:raise ValueError('효과 API 쿼리 거부')
+                    return self.respond(effects.register(self.review_token(),effect_decode(self.rfile.read(size))),201)
                 if path.startswith('/api/pattern-links/'):
                     if urlparse(self.path).query:raise ValueError('패턴 연결 API 쿼리 거부')
                     body=review_decode(self.rfile.read(size))

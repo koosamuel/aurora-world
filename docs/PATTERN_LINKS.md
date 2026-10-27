@@ -35,7 +35,7 @@
 | GET `/api/pattern-links/assets/{sha256.svg}` | 실제 연결에 고정한 합성 조각만 해시 확인 후 제공 |
 | GET `/api/pattern-links/export/{product_id}` | 연결 이력과 고정 조각 파일 검증 후 JSON |
 
-Host/Origin은 기존 loopback 제한을 따르며 쿼리·중복 JSON 키·비유한 값·미허용 필드를 거부한다. 잘못된 감사400, 역할403, 낡은 승인/버전·동시 변경·요청 키 충돌409다. `results/pattern-links.sqlite3`·`results/pattern-link-assets/`는 Git 제외 로컬 저장소다. 공개 예제는 `client/demo/pattern-links/`이며 세션/토큰·회사 자료를 포함하지 않는다. 기존 Supabase DEM SQL/권한/서버 실행은 변경하지 않았다. DS 원격 저장·실제 Auth/RLS·기업 자재 마스터/봉제 검증·U24 실제 효과는 후속이다.
+Host/Origin은 기존 loopback 제한을 따르며 쿼리·중복 JSON 키·비유한 값·미허용 필드를 거부한다. 잘못된 감사400, 역할403, 낡은 승인/버전·동시 변경·요청 키 충돌409다. `results/pattern-links.sqlite3`·`results/pattern-link-assets/`는 Git 제외 로컬 저장소다. 공개 예제는 `client/demo/pattern-links/`이며 세션/토큰·회사 자료를 포함하지 않는다. 기존 Supabase DEM SQL/권한/서버 실행은 변경하지 않았다. DS 원격 저장·실제 Auth/RLS·기업 자재 마스터/봉제 검증·U24 실제 효과는 후속이다. 합성 측정/보고 경로는 [별도 계약](SAMPLING_EFFECTS.md)으로 구현했다.
 
 ## 재현
 
