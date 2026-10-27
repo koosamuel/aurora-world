@@ -1,1 +1,14 @@
-{"name":"aurora-world","private":true,"type":"module","scripts":{"test:sql":"node tests/test_sql.mjs"},"devDependencies":{"@electric-sql/pglite":"0.5.11"}}
+{
+  "name": "aurora-world",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test:sql": "node tests/test_sql.mjs",
+    "build:viewer": "node tools/build_viewer.mjs"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.5.11",
+    "esbuild": "0.25.11",
+    "three": "0.186.1"
+  }
+}

@@ -1,0 +1,61 @@
+{
+  "objects": [
+    {
+      "reference_id": "B07JLZC571",
+      "dimensions_mm": {
+        "width": 400,
+        "height": 400,
+        "depth": 120
+      },
+      "source": {
+        "kind": "public_ABO_plus_synthetic_target",
+        "model_path": "3dmodels/original/1/B07JLZC571.glb",
+        "sha256": "5d434f480d11df978316d14f40e4798b8b3d9809228bfda3daa16635d63141f5",
+        "source_url": "https://amazon-berkeley-objects.s3.us-east-1.amazonaws.com/3dmodels/original/1/B07JLZC571.glb",
+        "license": "CC BY 4.0",
+        "license_url": "https://creativecommons.org/licenses/by/4.0/",
+        "attribution": "Amazon.com; dataset: Matthieu Guillaumin, Thomas Dideriksen, Kenan Deng, Himanshu Arora, Jasmine Collins, Jitendra Malik",
+        "company_data": false,
+        "provenance": "ABO public cushion geometry/materials; target 400×400×120 mm is an invented scenario, not product measurement; added nonuniform transform."
+      }
+    },
+    {
+      "reference_id": "B074VLST26",
+      "dimensions_mm": {
+        "width": 400,
+        "height": 400,
+        "depth": 120
+      },
+      "source": {
+        "kind": "public_ABO_plus_synthetic_target",
+        "model_path": "3dmodels/original/6/B074VLST26.glb",
+        "sha256": "780af6d1149f49568eadf80619bfa505bd0eef59c34b8e460d50bd50835e19b3",
+        "source_url": "https://amazon-berkeley-objects.s3.us-east-1.amazonaws.com/3dmodels/original/6/B074VLST26.glb",
+        "license": "CC BY 4.0",
+        "license_url": "https://creativecommons.org/licenses/by/4.0/",
+        "attribution": "Amazon.com; dataset: Matthieu Guillaumin, Thomas Dideriksen, Kenan Deng, Himanshu Arora, Jasmine Collins, Jitendra Malik",
+        "company_data": false,
+        "provenance": "ABO public cushion geometry/materials; target 400×400×120 mm is an invented scenario, not product measurement; added nonuniform transform."
+      }
+    },
+    {
+      "reference_id": "B07BMQXWX1",
+      "dimensions_mm": {
+        "width": 400,
+        "height": 400,
+        "depth": 120
+      },
+      "source": {
+        "kind": "public_ABO_plus_synthetic_target",
+        "model_path": "3dmodels/original/1/B07BMQXWX1.glb",
+        "sha256": "c2a2d97294219e7368a2e8aa8bf9e0d66315ee26b947f6ba599c6477fd347790",
+        "source_url": "https://amazon-berkeley-objects.s3.us-east-1.amazonaws.com/3dmodels/original/1/B07BMQXWX1.glb",
+        "license": "CC BY 4.0",
+        "license_url": "https://creativecommons.org/licenses/by/4.0/",
+        "attribution": "Amazon.com; dataset: Matthieu Guillaumin, Thomas Dideriksen, Kenan Deng, Himanshu Arora, Jasmine Collins, Jitendra Malik",
+        "company_data": false,
+        "provenance": "ABO public cushion geometry/materials; target 400×400×120 mm is an invented scenario, not product measurement; added nonuniform transform."
+      }
+    }
+  ]
+}

@@ -57,7 +57,7 @@
 <section id="labeling-panel" role="tabpanel" aria-labelledby="tab-labeling" hidden>
 <div class="section-heading"><div><p class="eyebrow">DIGITAL SAMPLING · INPUT PREPARATION</p><h2>디지털 샘플링 입력 준비</h2><p class="muted">가상 아트워크의 치수·원단·색상 조건과 현행 제작 기록을 버전으로 관리합니다.</p></div><span id="sampling-mode" class="badge">U20 · 준비 중</span></div>
 <section class="panel sampling-panel" aria-label="합성 디지털 샘플링 명세">
-<p class="small muted">일반적인 동물·자세·둥근 외형을 참고해 새로 그린 합성 원화입니다. 치수·원단·제작/BOM 기록은 가상값이며 회사 제품 사양이 아닙니다. 샘플 생성·디지털 승인·3D/패턴화는 후속 단계입니다.</p>
+<p class="small muted">일반적인 동물·자세·둥근 외형을 참고해 새로 그린 합성 원화입니다. 치수·원단·제작/BOM 기록은 가상값이며 회사 제품 사양이 아닙니다. 아래 U21에서 규칙 기반 2D·3D 후보를 생성합니다. 디지털 승인·패턴화는 후속 단계입니다.</p>
 <div class="sampling-toolbar"><label>합성 제품<select id="sampling-product"></select></label><label>명세 버전<select id="sampling-version"></select></label><button id="sampling-revise" class="secondary" type="button">수정본 만들기</button><label class="sampling-file-label">합성 명세 JSON 파일<input id="sampling-file" type="file" accept=".json,application/json"></label></div>
 <p id="sampling-status" class="notice" role="status" aria-live="polite">합성 명세를 준비하고 있습니다.</p>
 <div class="sampling-grid"><aside><img id="sampling-artwork" class="sampling-artwork" alt="새로 그린 가상 제품의 개념 원화"><h3 id="sampling-name"></h3><p id="sampling-version-label" class="small muted"></p><p id="sampling-colors" class="small"></p><p id="sampling-provenance" class="small muted"></p></aside>
@@ -67,6 +67,23 @@
 </div></div><details><summary>입력 명세·파일 해시 확인</summary><pre id="sampling-checksum"></pre><pre id="sampling-json"></pre></details>
 <p class="small muted">U20의 등록은 개발 PC의 로컬 저장입니다. Supabase 연결 상태와 독립적이며 기업 원본을 업로드하는 기능이 아닙니다. 배포 화면은 저장된 예제를 제공합니다.</p>
 </section>
+<section class="panel generation-panel" aria-label="디지털 샘플 생성과 방식 비교">
+ <div class="row-between"><div><p class="eyebrow">U21 / DIGITAL SAMPLE LAB</p><h2>명세에서 입체 후보로</h2></div><span id="generation-mode" class="badge neutral">준비 중</span></div>
+ <p class="muted">같은 치수의 기하 기준선과 후보를 비교합니다. 3D를 회전하고 2D 투영·GLB·검사 보고서를 받을 수 있습니다.</p>
+ <div class="form-row generation-form"><label>입력 명세·공개 참조<select id="generation-source"></select></label><label class="generation-seed">변형 시드<input id="generation-seed" type="number" min="0" max="2147483647" value="42" step="1"></label><button id="generation-run" disabled>샘플 2개 생성·비교</button></div>
+ <p id="generation-source-detail" class="small muted"></p><p id="generation-status" role="status" aria-live="polite">생성 자료를 준비하고 있습니다.</p>
+ <p class="generation-boundary">규칙 기반 형상 데모 · AI 학습 모델 없음 · 원단 물성·봉제·현업 승인·절감 효과는 미검증</p>
+ <div id="generation-result" hidden>
+  <div class="generation-cards">
+   <article><h3>01 / 기하 기준선</h3><p id="generation-baseline-method" class="small muted"></p><div id="generation-baseline-3d" class="generation-3d" role="img" aria-label="기준선 3D 준비 중"></div><div class="generation-camera"><button class="secondary small" data-view="baseline" data-side="false">입체 보기</button><button class="secondary small" data-view="baseline" data-side="true">옆면 보기</button></div><details><summary>2D 정면·측면 투영</summary><div class="generation-projections"><img id="generation-baseline-front" alt="기준선 정면 기하 투영"><img id="generation-baseline-side" alt="기준선 측면 기하 투영"></div></details></article>
+   <article><h3>02 / 생성 후보</h3><p id="generation-candidate-method" class="small muted"></p><div id="generation-candidate-3d" class="generation-3d" role="img" aria-label="후보 3D 준비 중"></div><div class="generation-camera"><button class="secondary small" data-view="candidate" data-side="false">입체 보기</button><button class="secondary small" data-view="candidate" data-side="true">옆면 보기</button></div><details><summary>2D 정면·측면 투영</summary><div class="generation-projections"><img id="generation-candidate-front" alt="후보 정면 기하 투영"><img id="generation-candidate-side" alt="후보 측면 기하 투영"></div></details></article>
+  </div>
+  <div class="table-wrap"><table><caption>동일 명세의 생성 방식 비교 · 외관/봉제 품질 점수가 아닙니다</caption><thead><tr><th>방식</th><th>부위 / 삼각형</th><th>너비×높이×깊이 mm</th><th>치수 오차 mm</th><th>생성 시간</th></tr></thead><tbody id="generation-metrics"></tbody></table></div>
+  <p id="generation-conditions" class="small muted"></p><p id="generation-attribution" class="small"></p><div id="generation-downloads" class="sampling-actions"></div>
+  <details><summary>생성 설정·명세/코드 해시·미지원 조건</summary><pre id="generation-json"></pre></details>
+ </div>
+</section>
+
 <div class="divider"></div>
 
 <div class="section-heading"><div><p class="eyebrow">PATTERN LABELING · SYNTHETIC DEMO</p><h2>패턴 부위명 라벨링 실험실</h2><p class="muted">가상 조각을 분류하고, 표준명 후보를 확인해 직접 검수합니다.</p></div><span class="badge">합성 데이터로 실행 가능</span></div>

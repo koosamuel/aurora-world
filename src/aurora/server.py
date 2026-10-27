@@ -8,10 +8,15 @@ import threading
 from .jobs import Store, PROJECTS, work_once
 
 
-def serve(root, host='127.0.0.1', port=8765, public_input=None):
+def serve(root, host='127.0.0.1', port=8765, public_input=None, reference_root=None):
     root=Path(root); store=Store(root/'results/local-demo.sqlite3')
     from .sampling import BriefStore, Conflict, MAX_BYTES as SAMPLING_BYTES, decode as sampling_decode, envelope as sampling_envelope, seed as sampling_seed
     sampling=BriefStore(root/'results/sampling-briefs.sqlite3');sampling_seed(sampling,root)
+    from .generation import GenerationService, decode_request as generation_decode
+    if reference_root is None:
+        candidate=root.parent/'04_데이터/원본/공개연구데이터/ABO_디지털샘플링_선정'
+        if candidate.is_dir():reference_root=candidate
+    generation=GenerationService(root,sampling,reference_root)
     pool=ThreadPoolExecutor(max_workers=2)
     if public_input is None:public_input=root.parent/'04_데이터/가공/2026-10-26_UCI_Online_Retail_II/weekly.json'
     from .public_jobs import PublicStore
@@ -30,6 +35,23 @@ def serve(root, host='127.0.0.1', port=8765, public_input=None):
             if not self.allowed_host():return self.respond(dict(error='로컬 호스트만 허용됩니다.'),403)
             path=urlparse(self.path).path
             try:
+                if path.startswith('/api/generation/'):
+                    if urlparse(self.path).query:raise ValueError('생성 API 쿼리는 허용하지 않습니다.')
+                    if path=='/api/generation/catalog':return self.respond(generation.catalog())
+                    if path.startswith('/api/generation/runs/'):
+                        bits=path.split('/')
+                        if len(bits)!=5:raise ValueError('생성 조회 경로를 확인하세요.')
+                        row=generation.get(bits[-1]);return self.respond(row if row else dict(error='생성 실행 없음'),200 if row else 404)
+                    if path.startswith('/api/generation/artifacts/'):
+                        bits=path.split('/')
+                        if len(bits)!=6:raise ValueError('생성 파일 경로를 확인하세요.')
+                        file=generation.artifact(bits[-2],bits[-1])
+                        if not file:return self.respond(dict(error='완료한 생성 파일 없음'),404)
+                        mime='model/gltf-binary' if file.suffix=='.glb' else 'image/svg+xml' if file.suffix=='.svg' else 'application/json' if file.suffix=='.json' else 'text/markdown; charset=utf-8'
+                        self.send_response(200);self.send_header('Content-Type',mime);self.send_header('Content-Length',str(file.stat().st_size));self.send_header('Cache-Control','no-store');self.send_header('X-Content-Type-Options','nosniff');self.send_header('Content-Disposition','attachment; filename='+file.name);self.end_headers()
+                        with file.open('rb') as stream:self.copyfile(stream,self.wfile)
+                        return
+                    return self.respond(dict(error='지원하지 않는 생성 경로입니다.'),404)
                 if path=='/api/sampling/briefs':return self.respond(sampling.list())
                 if path.startswith('/api/sampling/briefs/'):
                     bits=path.split('/')
@@ -77,6 +99,11 @@ def serve(root, host='127.0.0.1', port=8765, public_input=None):
                 if path in ('/api/sampling/validate','/api/sampling/briefs'):
                     brief=sampling_decode(self.rfile.read(size))
                     return self.respond(sampling_envelope(brief) if path.endswith('/validate') else sampling.register(brief),200 if path.endswith('/validate') else 201)
+                if path=='/api/generation/runs':
+                    if urlparse(self.path).query:raise ValueError('생성 API 쿼리는 허용하지 않습니다.')
+                    req=generation_decode(self.rfile.read(size));row,new=generation.request(req)
+                    if new:pool.submit(generation.work,row['id'])
+                    return self.respond(row,202)
                 body=json.loads(self.rfile.read(size))
                 if not isinstance(body,dict):raise ValueError('객체 형식의 요청이 필요합니다.')
                 path=urlparse(self.path).path

@@ -26,7 +26,7 @@ export function initSampling(){
   $('sampling-colors').textContent=p.requirements.colors.map(c=>`${c.part}: ${c.name} (${c.hex})`).join(' · ');
   if(previewUrl)URL.revokeObjectURL(previewUrl);previewUrl=URL.createObjectURL(new Blob([p.artwork.svg],{type:'image/svg+xml'}));$('sampling-artwork').src=previewUrl;
   $('sampling-provenance').textContent=p.rights.provenance;$('sampling-checksum').textContent='명세 SHA-256: '+row.checksum+'\n원화 SHA-256: '+p.artwork.sha256;
-  $('sampling-json').textContent=JSON.stringify(p,null,2);baseline(p,row.summary);controls();
+  $('sampling-json').textContent=JSON.stringify(p,null,2);baseline(p,row.summary);controls();window.dispatchEvent(new CustomEvent('sampling-brief-selected',{detail:{id:`u20:${p.product_id}:${p.brief_version}`}}));
  }
  async function choose(){
   const ticket=++seq;const pid=$('sampling-product').value,v=Number($('sampling-version').value);

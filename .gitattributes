@@ -1,0 +1,2 @@
+# Generated third-party shader bundle; review tools/browser/sample-viewer.js.
+client/vendor/sample-viewer.js -diff

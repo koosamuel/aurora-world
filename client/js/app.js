@@ -1,3 +1,4 @@
+import {initGeneration} from './generation-view.js';
 import {initSampling} from './sampling-view.js';
 import {initIdentity} from './identity-view.js';
 import {demoApi,SupabaseApi} from './api.js';
@@ -111,6 +112,7 @@ $('demo-mode').addEventListener('click',async()=>{const old=api;if(old.mode==='s
 initLabeling();
 initIdentity();
 initSampling();
+initGeneration();
 tab(location.hash.slice(2));
 const configured=window.AURORA_CONFIG;
 if(configured?.supabaseUrl){$('connect-form').elements.url.value=configured.supabaseUrl;$('connect-form').elements.key.value=configured.publishableKey;}
