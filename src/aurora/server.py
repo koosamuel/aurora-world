@@ -21,6 +21,8 @@ def serve(root, host='127.0.0.1', port=8765, public_input=None, reference_root=N
     ai=AIService(root,sampling)
     from .sample_reviews import ReviewStore, Denied as ReviewDenied, decode as review_decode
     reviews=ReviewStore(root,sampling,generation,ai)
+    from .pattern_links import PatternLinks
+    pattern_links=PatternLinks(root,reviews)
     pool=ThreadPoolExecutor(max_workers=2)
     if public_input is None:public_input=root.parent/'04_데이터/가공/2026-10-26_UCI_Online_Retail_II/weekly.json'
     from .public_jobs import PublicStore
@@ -42,7 +44,20 @@ def serve(root, host='127.0.0.1', port=8765, public_input=None, reference_root=N
             if not self.allowed_host():return self.respond(dict(error='로컬 호스트만 허용됩니다.'),403)
             path=urlparse(self.path).path
             try:
+                if path.startswith('/api/pattern-links/'):
+                    if urlparse(self.path).query:raise ValueError('패턴 연결 API 쿼리 거부')
+                    if path=='/api/pattern-links/catalog':return self.respond(pattern_links.catalog())
+                    bits=path.split('/')
+                    if len(bits)==5 and bits[3] in ('products','export'):
+                        return self.respond(pattern_links.export(unquote(bits[4])) if bits[3]=='export' else pattern_links.get(unquote(bits[4])))
+                    if len(bits)==6 and bits[3]=='bundles':return self.respond(pattern_links.bundle(unquote(bits[4]),int(bits[5])))
+                    if len(bits)==5 and bits[3]=='assets':
+                        p=pattern_links.asset(bits[4])
+                        if not p:return self.respond(dict(error='등록된 연결 조각 없음'),404)
+                        raw=p.read_bytes();self.send_response(200);self.send_header('Content-Type','image/svg+xml');self.send_header('Content-Length',str(len(raw)));self.send_header('X-Content-Type-Options','nosniff');self.send_header('Cache-Control','no-store');self.end_headers();self.wfile.write(raw);return
+                    return self.respond(dict(error='지원하지 않는 패턴 연결 경로'),404)
                 if path.startswith('/api/sample-reviews/'):
+
                     if urlparse(self.path).query:raise ValueError('검토 API 쿼리는 허용하지 않습니다.')
                     if path=='/api/sample-reviews/catalog':return self.respond(reviews.catalog())
                     if path=='/api/sample-reviews/session':return self.respond(dict(actor=reviews.actor(self.review_token()),authentication='local_demo_persona_only'))
@@ -131,6 +146,11 @@ def serve(root, host='127.0.0.1', port=8765, public_input=None, reference_root=N
                 path=urlparse(self.path).path
                 limit=SAMPLING_BYTES if path in ('/api/sampling/validate','/api/sampling/briefs') else 65536
                 if not 0<size<=limit:raise ValueError('요청 크기를 확인하세요.')
+                if path.startswith('/api/pattern-links/'):
+                    if urlparse(self.path).query:raise ValueError('패턴 연결 API 쿼리 거부')
+                    body=review_decode(self.rfile.read(size))
+                    if path=='/api/pattern-links/links':return self.respond(pattern_links.link(self.review_token(),body),201)
+                    return self.respond(dict(error='지원하지 않는 패턴 연결 경로'),404)
                 if path.startswith('/api/sample-reviews/'):
                     if urlparse(self.path).query:raise ValueError('검토 API 쿼리는 허용하지 않습니다.')
                     body=review_decode(self.rfile.read(size))

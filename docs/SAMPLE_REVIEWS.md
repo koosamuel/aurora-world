@@ -54,4 +54,4 @@ PYTHONPATH=src python3 tools/build_review_demo.py --output results/new-review-de
 PYTHONPATH=src python3 -m unittest discover -s tests -p 'test_sample_reviews.py' -v
 ```
 
-실제 사용자 Auth/RLS·기업 승인자, Supabase DS 검토 저장/다중 호스트 운영, 자유로운 원화 편집·U23 패턴/BOM·U24 실제 효과는 후속이다. 기존 DEM 서버 SQL/권한은 이번에 변경하지 않았다.
+실제 사용자 Auth/RLS·기업 승인자, Supabase DS 검토 저장/다중 호스트 운영, 자유로운 원화 편집·U24 실제 효과는 후속이다. U23 수동 합성 패턴/BOM 연결은 [별도 계약](PATTERN_LINKS.md)에 구현했다. 기존 DEM 서버 SQL/권한은 이번에 변경하지 않았다.

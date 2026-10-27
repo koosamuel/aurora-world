@@ -121,6 +121,22 @@
  </div>
 </section>
 
+<section class="panel pattern-link-panel" aria-label="승인 샘플과 패턴 조각 자재 BOM 연결">
+ <div class="row-between"><div><p class="eyebrow">U23 / PATTERN · MATERIAL · BOM</p><h2>승인 샘플에서 패턴·BOM으로</h2></div><span id="pattern-mode" class="badge neutral">준비 중</span></div>
+ <p class="muted">현재 유효한 U22 승인과 패턴·조각·자재/수량의 버전을 고정하고 변경 영향을 추적합니다.</p>
+ <p class="small muted">수동 합성 대응입니다. 자동 패턴 생성·실제 봉제 적합성·기업 승인은 검증하지 않았습니다. 역할 선택은 누구나 가능한 합성 시뮬레이션이며 공개 페이지는 저장 조회만 제공합니다.</p>
+ <div class="review-toolbar"><label>합성 역할<select id="pattern-persona"><option value="designer">가상 작성자</option><option value="viewer">가상 열람자</option><option value="reviewer">가상 검토자</option><option value="approver">가상 승인자</option></select></label><button id="pattern-persona-apply" class="secondary">합성 역할 적용</button><p id="pattern-actor" class="small"></p></div>
+ <div class="review-toolbar"><label>연결 제품<select id="pattern-product"></select></label><label>패턴/BOM 묶음<select id="pattern-bundle"></select></label><label>연결 이력<select id="pattern-link-version"></select></label><button id="pattern-refresh" class="secondary">최신 승인·연결 조회</button><button id="pattern-export" class="secondary" disabled>연결 이력 JSON</button></div>
+ <div id="pattern-chain" class="pattern-chain"></div><h3 id="pattern-summary"></h3><p id="pattern-audit"></p><p id="pattern-origin" class="small muted"></p>
+ <label>수동 연결·재확인 사유<textarea id="pattern-reason" rows="2" maxlength="2000" placeholder="대응 근거와 변경 이유를 기록하세요"></textarea></label><button id="pattern-create" disabled>승인 샘플과 최신 패턴/BOM 연결</button>
+ <p id="pattern-status" role="status" aria-live="polite">패턴 연결을 준비하고 있습니다.</p>
+ <div id="pattern-previews" class="pattern-previews"></div>
+ <div class="table-wrap"><table><caption>선택 패턴의 조각·자재·수량과 이론 면적 · pcs와 면적 단위를 구분</caption><thead><tr><th>조각 ID</th><th>합성 부위 ID</th><th>윤곽 치수</th><th>자재</th><th>재단 수량</th><th>이론 원단 면적</th></tr></thead><tbody id="pattern-rows"></tbody></table></div>
+ <h3>이전 연결 대비 변경 영향</h3><p id="pattern-impact"></p>
+ <div class="table-wrap"><table><caption>불변 연결 이력 · 승인/명세/패턴 변경 후 현재 유효성을 다시 계산</caption><thead><tr><th>연결</th><th>샘플</th><th>패턴/BOM</th><th>현재 유효성</th><th>사유</th></tr></thead><tbody id="pattern-history"></tbody></table></div>
+ <details><summary>감사 오류·출처/승인 해시·연결 이력 JSON</summary><pre id="pattern-issues"></pre><pre id="pattern-json"></pre></details>
+</section>
+
 <div class="divider"></div>
 
 <div class="section-heading"><div><p class="eyebrow">PATTERN LABELING · SYNTHETIC DEMO</p><h2>패턴 부위명 라벨링 실험실</h2><p class="muted">가상 조각을 분류하고, 표준명 후보를 확인해 직접 검수합니다.</p></div><span class="badge">합성 데이터로 실행 가능</span></div>

@@ -60,10 +60,10 @@ export function initSampleReviews(){
  }
  async function mutate(path,body){
   if(busy)return;busy=true;controls();say('검토 사건을 저장하고 최신 상태를 확인하고 있습니다…');
-  try{const r=await json('./api/sample-reviews/'+path,{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},body:JSON.stringify({...body,request_key:crypto.randomUUID()})});await refresh(r.product_id);say('합성 '+(path==='revisions'?'수정본':'검토 사건')+' 저장 완료 · 이력 '+r.seq+' · 현재 상태를 다시 조회했습니다.');}
+  try{const r=await json('./api/sample-reviews/'+path,{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},body:JSON.stringify({...body,request_key:crypto.randomUUID()})});await refresh(r.product_id);window.dispatchEvent(new Event('digital-review-updated'));say('합성 '+(path==='revisions'?'수정본':'검토 사건')+' 저장 완료 · 이력 '+r.seq+' · 현재 상태를 다시 조회했습니다.');}
   catch(e){if(e.status===409)await refresh(record?.product_id);say('검토 저장 실패: '+e.message);}finally{busy=false;controls();}
  }
- $('review-persona-apply').onclick=async()=>{try{const r=await json('./api/sample-reviews/session',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({persona_id:$('review-persona').value})});token=r.token;actor=r.actor;try{sessionStorage.setItem('aurora-review-token',token);}catch{}$('review-actor').textContent=actor.name+' · '+actor.role+' · 합성 역할 시뮬레이션';controls();}catch(e){say(e.message);}};
+ $('review-persona-apply').onclick=async()=>{try{const r=await json('./api/sample-reviews/session',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({persona_id:$('review-persona').value})});token=r.token;actor=r.actor;try{sessionStorage.setItem('aurora-review-token',token);}catch{}$('review-actor').textContent=actor.name+' · '+actor.role+' · 합성 역할 시뮬레이션';controls();window.dispatchEvent(new Event('digital-review-updated'));}catch(e){say(e.message);}};
  $('review-product').onchange=()=>load($('review-product').value).catch(e=>say(e.message));$('review-version').onchange=()=>show().catch(e=>say(e.message));$('review-action').onchange=controls;$('review-candidate').onchange=controls;
  $('review-refresh').onclick=()=>refresh().catch(e=>say(e.message));
  $('review-new').onclick=()=>{const c=source();if(!c)return;if(record&&c.product_id!==record.product_id){say('선택한 제품과 생성 후보가 다릅니다. 새 제품 후보 선택 또는 같은 제품을 선택하세요.');return;}mutate('revisions',{candidate_id:c.id,candidate_checksum:c.checksum,parent_version:record?.head_version||null,expected_seq:record?.seq||0,change_reason:$('review-reason').value.trim()});};
