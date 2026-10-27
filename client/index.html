@@ -104,6 +104,23 @@
  <p class="small muted">원화는 자체 합성 도형입니다. 모델: <a href="https://huggingface.co/laion/CLIP-ViT-B-32-laion2B-s34B-b79K" target="_blank" rel="noopener">OpenCLIP (MIT)</a>, <a href="https://huggingface.co/stable-diffusion-v1-5/stable-diffusion-v1-5" target="_blank" rel="noopener">Stable Diffusion 1.5</a> · <a href="https://huggingface.co/spaces/CompVis/stable-diffusion-license" target="_blank" rel="noopener">CreativeML OpenRAIL-M 사용 조건</a>. 기존 3D 기하 생성과 독립적입니다. 게시 화면은 저장된 AI 추론만 조회합니다.</p>
 </section>
 
+<section class="panel sample-review-panel" aria-label="디지털 샘플 검토와 승인 이력">
+ <div class="row-between"><div><p class="eyebrow">U22 / DIGITAL REVIEW</p><h2>디지털 샘플 검토·수정·승인</h2></div><span id="review-mode" class="badge neutral">준비 중</span></div>
+ <p class="muted">완료한 자체 합성 U21 후보를 등록하고 버전·조건 검토·수정 사유·승인 이력을 연결합니다. 수정본에는 새 검토가 필요합니다.</p>
+ <p class="small muted">역할 선택은 인증이 아닌 합성 시뮬레이션입니다. 실제 사용자 권한·기업 인수·봉제/제작 승인은 별도입니다. 공개 페이지는 저장 이력만 조회합니다.</p>
+ <div class="review-toolbar"><label>합성 역할<select id="review-persona"></select></label><button id="review-persona-apply" class="secondary">합성 역할 적용</button><p id="review-actor" class="small">합성 역할 미선택</p></div>
+ <div class="review-toolbar"><label>검토 제품<select id="review-product"></select></label><label>샘플 버전<select id="review-version"></select></label><button id="review-refresh" class="secondary">최신 상태 조회</button><button id="review-download" class="secondary" disabled>검토 이력 JSON</button></div>
+ <details id="review-register"><summary>U21 후보 등록·수정본 만들기</summary><label>완료한 자체 합성 후보<select id="review-candidate"></select></label><label>등록·수정 사유<textarea id="review-reason" rows="2" maxlength="2000" placeholder="어떤 차이를 반영했는지 기록하세요"></textarea></label><button id="review-new" disabled>첫 후보 등록</button><p class="small muted">같은 제품의 다른 생성 후보 또는 새 명세를 등록합니다. 픽셀 편집·재생성은 U21에서 수행하고 기존 파일/승인은 덮어쓰지 않습니다.</p></details>
+ <p id="review-status" role="status" aria-live="polite">검토 이력을 준비하고 있습니다.</p>
+ <div id="review-content" hidden><h3 id="review-summary"></h3><p id="review-version-detail" class="small muted"></p><div id="review-assets" class="sampling-actions"></div>
+  <div class="review-comparison"><article><h3 id="review-before-label"></h3><img id="review-before" alt="이전 샘플 버전"></article><article><h3 id="review-after-label"></h3><img id="review-after" alt="선택한 샘플 버전"></article></div>
+  <div class="table-wrap"><table><caption>선택한 버전의 조건별 검토 · 실측/물성 인증이 아닙니다</caption><thead><tr><th>검토 항목</th><th>판정</th><th>사유·메모</th></tr></thead><tbody id="review-checks"></tbody></table></div>
+  <div class="review-toolbar"><label>검토 동작<select id="review-action"><option value="submit">검토 요청 · 작성자</option><option value="review">조건 판정 저장 · 검토자</option><option value="request_changes">수정 요청</option><option value="hold">보류·승인 철회</option><option value="approve">가상 디지털 승인 · 승인자</option><option value="comment">의견 추가</option></select></label><label>의견·사유<textarea id="review-comment" rows="2" maxlength="2000"></textarea></label><button id="review-send" disabled>검토 사건 저장</button></div>
+  <div class="table-wrap"><table><caption>제품 전체의 수정·검토·승인 이력 · 삭제/덮어쓰기 없이 보존</caption><thead><tr><th>순서</th><th>버전</th><th>사건</th><th>합성 역할</th><th>기록 시각 UTC</th><th>사유</th></tr></thead><tbody id="review-history"></tbody></table></div>
+  <details><summary>수정본·부모·검토/승인 해시와 내보내기 범위</summary><pre id="review-json"></pre></details>
+ </div>
+</section>
+
 <div class="divider"></div>
 
 <div class="section-heading"><div><p class="eyebrow">PATTERN LABELING · SYNTHETIC DEMO</p><h2>패턴 부위명 라벨링 실험실</h2><p class="muted">가상 조각을 분류하고, 표준명 후보를 확인해 직접 검수합니다.</p></div><span class="badge">합성 데이터로 실행 가능</span></div>

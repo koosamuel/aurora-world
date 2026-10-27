@@ -18,3 +18,8 @@ textarea{width:100%;min-height:7rem;resize:vertical;font:inherit;border:1px soli
 .ai-images article{min-width:0}.ai-images img{display:block;width:100%;aspect-ratio:1;object-fit:contain;border:1px solid var(--line,#dce5e3);border-radius:12px;background:#fff}
 .ai-panel pre{max-height:420px;overflow:auto}.ai-panel label{min-width:0}.ai-panel select{max-width:100%}
 @media(max-width:700px){.ai-images{grid-template-columns:1fr}.ai-panel .row-between{align-items:flex-start;flex-wrap:wrap}.ai-panel .form-row{display:flex;flex-direction:column;align-items:stretch}}
+
+/* U22 synthetic review: comparison and audit stay readable on narrow screens. */
+.review-toolbar{display:flex;flex-wrap:wrap;align-items:end;gap:14px;margin:16px 0}.review-toolbar label{flex:1;min-width:170px}.review-comparison{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;margin:20px 0}.review-comparison article{min-width:0}.review-comparison img{width:100%;aspect-ratio:1;object-fit:contain;border:1px solid #dce5e3;border-radius:12px;background:#fff}.sample-review-panel pre{max-height:420px;overflow:auto}.sample-review-panel td{vertical-align:top}.sample-review-panel td textarea{min-width:160px}.sample-review-panel select{max-width:100%}
+@media(max-width:700px){.review-comparison{grid-template-columns:1fr}.review-toolbar{align-items:stretch;flex-direction:column}.review-toolbar label{min-width:0}.sample-review-panel .row-between{flex-wrap:wrap}}
+.sample-review-panel td textarea{min-height:66px}

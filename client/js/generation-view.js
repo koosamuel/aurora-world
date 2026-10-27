@@ -25,7 +25,7 @@ export function initGeneration(){
    const bytes=await artifact(run,byName.get(key+'.glb'));if(ticket!==serial)return;await viewers[key].load(bytes);
    for(const view of ['front','side']){const b=await artifact(run,byName.get(key+'.'+view+'.svg'));if(ticket!==serial)return;const u=URL.createObjectURL(new Blob([b],{type:'image/svg+xml'}));urls.push(u);$('generation-'+key+'-'+view).src=u;}
   }));
-  if(ticket===serial)say((local?'새 로컬 기하 생성 완료':'저장된 생성 결과 조회 완료')+' · GLB·2D 투영의 크기/SHA-256을 확인했습니다. 현업 승인·제작/효과 검증은 아직 하지 않았습니다.');
+  if(ticket===serial){say((local?'새 로컬 기하 생성 완료':'저장된 생성 결과 조회 완료')+' · GLB·2D 투영의 크기/SHA-256을 확인했습니다. 현업 승인·제작/효과 검증은 아직 하지 않았습니다.');if(local)window.dispatchEvent(new CustomEvent('digital-sample-generated',{detail:{kind:'geometry',run_id:run.id}}));}
  }
  $('generation-source').addEventListener('change',()=>{describe();$('generation-result').hidden=true;say('입력을 바꿨습니다. 생성/저장 결과 조회를 실행하세요.');});
  window.addEventListener('sampling-brief-selected',e=>{if(local&&!pending)refresh(e.detail.id).catch(x=>say('명세 연결 실패: '+x.message));});

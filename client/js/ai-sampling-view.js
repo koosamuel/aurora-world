@@ -23,6 +23,7 @@ export function initAISampling(){
   }
   $('ai-downloads').replaceChildren(...row.result.artifacts.map(meta=>{const b=document.createElement('button');b.className='secondary small';b.textContent=meta.file;b.onclick=async()=>{b.disabled=true;try{const data=await bytes(row,meta);const u=URL.createObjectURL(new Blob([data],{type:meta.file.endsWith('.png')?'image/png':'application/json'}));const link=document.createElement('a');link.href=u;link.download=meta.file;link.click();setTimeout(()=>URL.revokeObjectURL(u),1000);}catch(e){say(e.message);}finally{b.disabled=false;}};return b;}));
   say((local?'로컬 AI 추론 완료':'저장된 실제 AI 추론 조회 완료')+' · 원화·출력 PNG의 크기/SHA-256 확인. 2D 시각 후보이며 3D·치수·봉제 적합성은 미검증입니다.');
+  if(local)window.dispatchEvent(new CustomEvent('digital-sample-generated',{detail:{kind:'ai',run_id:row.id}}));
  }
  async function poll(row){
   for(let i=0;i<660&&['queued','running'].includes(row.state);i++){

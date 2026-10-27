@@ -19,6 +19,8 @@ def serve(root, host='127.0.0.1', port=8765, public_input=None, reference_root=N
     generation=GenerationService(root,sampling,reference_root)
     from .ai_sampling import AIService
     ai=AIService(root,sampling)
+    from .sample_reviews import ReviewStore, Denied as ReviewDenied, decode as review_decode
+    reviews=ReviewStore(root,sampling,generation,ai)
     pool=ThreadPoolExecutor(max_workers=2)
     if public_input is None:public_input=root.parent/'04_데이터/가공/2026-10-26_UCI_Online_Retail_II/weekly.json'
     from .public_jobs import PublicStore
@@ -33,10 +35,26 @@ def serve(root, host='127.0.0.1', port=8765, public_input=None, reference_root=N
         def api_project(self):return parse_qs(urlparse(self.path).query).get('project_type',['forecast'])[0]
         def allowed_host(self):
             return self.headers.get('Host') in (f'127.0.0.1:{port}',f'localhost:{port}')
+        def review_token(self):
+            auth=self.headers.get('Authorization','')
+            return auth[7:] if auth.startswith('Bearer ') else None
         def do_GET(self):
             if not self.allowed_host():return self.respond(dict(error='로컬 호스트만 허용됩니다.'),403)
             path=urlparse(self.path).path
             try:
+                if path.startswith('/api/sample-reviews/'):
+                    if urlparse(self.path).query:raise ValueError('검토 API 쿼리는 허용하지 않습니다.')
+                    if path=='/api/sample-reviews/catalog':return self.respond(reviews.catalog())
+                    if path=='/api/sample-reviews/session':return self.respond(dict(actor=reviews.actor(self.review_token()),authentication='local_demo_persona_only'))
+                    bits=path.split('/')
+                    if len(bits)==5 and bits[3] in ('products','export'):
+                        row=reviews.export(unquote(bits[4])) if bits[3]=='export' else reviews.get(unquote(bits[4]))
+                        return self.respond(row if row else dict(error='등록된 검토 없음'),200 if row else 404)
+                    if len(bits)==5 and bits[3]=='assets':
+                        p=reviews.asset(bits[4])
+                        if not p:return self.respond(dict(error='등록된 검토 자산 없음'),404)
+                        raw=p.read_bytes();self.send_response(200);self.send_header('Content-Type',{'.png':'image/png','.svg':'image/svg+xml','.glb':'model/gltf-binary'}[p.suffix]);self.send_header('Content-Length',str(len(raw)));self.send_header('X-Content-Type-Options','nosniff');self.send_header('Cache-Control','no-store');self.end_headers();self.wfile.write(raw);return
+                    return self.respond(dict(error='지원하지 않는 검토 경로'),404)
                 if path.startswith('/api/ai-sampling/'):
                     if urlparse(self.path).query:raise ValueError('AI API 쿼리는 허용하지 않습니다.')
                     if path=='/api/ai-sampling/catalog':return self.respond(ai.catalog())
@@ -100,7 +118,8 @@ def serve(root, host='127.0.0.1', port=8765, public_input=None, reference_root=N
                     return self.respond(r if r else dict(error='실행을 찾을 수 없습니다.'),200 if r else 404)
                 if path.startswith('/api/'):return self.respond(dict(error='지원하지 않는 요청입니다.'),404)
                 return super().do_GET()
-            except ValueError as e:return self.respond(dict(error=str(e)),400)
+            except ReviewDenied as e:return self.respond(dict(error=str(e)),403)
+            except (ValueError,TypeError) as e:return self.respond(dict(error=str(e)),400)
         def do_POST(self):
             if not self.allowed_host():return self.respond(dict(error='로컬 호스트만 허용됩니다.'),403)
             # A demo server can run jobs, so cross-origin POSTs are refused even on loopback.
@@ -112,6 +131,13 @@ def serve(root, host='127.0.0.1', port=8765, public_input=None, reference_root=N
                 path=urlparse(self.path).path
                 limit=SAMPLING_BYTES if path in ('/api/sampling/validate','/api/sampling/briefs') else 65536
                 if not 0<size<=limit:raise ValueError('요청 크기를 확인하세요.')
+                if path.startswith('/api/sample-reviews/'):
+                    if urlparse(self.path).query:raise ValueError('검토 API 쿼리는 허용하지 않습니다.')
+                    body=review_decode(self.rfile.read(size))
+                    if path=='/api/sample-reviews/session':return self.respond(reviews.session(body))
+                    if path=='/api/sample-reviews/revisions':return self.respond(reviews.revision(self.review_token(),body),201)
+                    if path=='/api/sample-reviews/events':return self.respond(reviews.event(self.review_token(),body))
+                    return self.respond(dict(error='지원하지 않는 검토 경로'),404)
                 if path in ('/api/sampling/validate','/api/sampling/briefs'):
                     brief=sampling_decode(self.rfile.read(size))
                     return self.respond(sampling_envelope(brief) if path.endswith('/validate') else sampling.register(brief),200 if path.endswith('/validate') else 201)
@@ -140,6 +166,7 @@ def serve(root, host='127.0.0.1', port=8765, public_input=None, reference_root=N
                     return self.respond(r if r else dict(error='실행을 찾을 수 없습니다.'),200 if r else 404)
                 return self.respond(dict(error='지원하지 않는 요청입니다.'),404)
             except Conflict as e:return self.respond(dict(error=str(e)),409)
+            except ReviewDenied as e:return self.respond(dict(error=str(e)),403)
             except (ValueError,TypeError) as e:return self.respond(dict(error=str(e)),400)
     # A periodic worker also recovers expired leases after startup.
     stopped=threading.Event()

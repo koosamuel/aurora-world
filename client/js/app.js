@@ -1,4 +1,5 @@
 import {initGeneration} from './generation-view.js';
+import {initSampleReviews} from './sample-review-view.js';
 import {initAISampling} from './ai-sampling-view.js';
 import {initSampling} from './sampling-view.js';
 import {initIdentity} from './identity-view.js';
@@ -115,6 +116,7 @@ initIdentity();
 initSampling();
 initGeneration();
 initAISampling();
+initSampleReviews();
 tab(location.hash.slice(2));
 const configured=window.AURORA_CONFIG;
 if(configured?.supabaseUrl){$('connect-form').elements.url.value=configured.supabaseUrl;$('connect-form').elements.key.value=configured.publishableKey;}
