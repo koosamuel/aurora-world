@@ -42,6 +42,11 @@ def serve(root, host='127.0.0.1', port=8765, public_input=None):
                     if path=='/api/public/runs':return self.respond(public.list('forecast'))
                     row=public.get(unquote(path.split('/')[-1]),'forecast')
                     return self.respond(row if row else dict(error='실행 없음'),200 if row else 404)
+                if path=='/api/identity-demo':
+                    from .identity import demo
+                    query=parse_qs(urlparse(self.path).query,keep_blank_values=True)
+                    if set(query)-{'case'} or len(query.get('case',['valid']))!=1:raise ValueError('invalid identity query')
+                    return self.respond(demo(root,query.get('case',['valid'])[0]))
                 if path=='/api/health':return self.respond(dict(mode='local',synthetic=True,projects=PROJECTS))
                 if path=='/api/runs':return self.respond(store.list(self.api_project()))
                 if path.startswith('/api/runs/'):

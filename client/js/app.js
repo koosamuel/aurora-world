@@ -1,3 +1,4 @@
+import {initIdentity} from './identity-view.js';
 import {demoApi,SupabaseApi} from './api.js';
 import {renderPublic} from './public-view.js';
 import {drawChart} from './chart.js';
@@ -107,6 +108,7 @@ $('login-form').addEventListener('submit',async e=>{e.preventDefault();const ada
 $('logout').addEventListener('click',async()=>{const adapter=api;epoch++;selected=null;empty('로그아웃되었습니다');clearTimeout(polling);$('run-list').replaceChildren();try{await adapter.logout();}catch(error){notice(error.message);}finally{if(adapter===api)updateControls();}});
 $('demo-mode').addEventListener('click',async()=>{const old=api;if(old.mode==='supabase')await old.logout().catch(()=>{});await changeMode(await demoApi());});
 initLabeling();
+initIdentity();
 tab(location.hash.slice(2));
 const configured=window.AURORA_CONFIG;
 if(configured?.supabaseUrl){$('connect-form').elements.url.value=configured.supabaseUrl;$('connect-form').elements.key.value=configured.publishableKey;}

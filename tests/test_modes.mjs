@@ -10,6 +10,7 @@ try {
  await page.route('**/api/health',r=>r.fulfill({status:404,contentType:'application/json',body:'{}'}));
  await page.goto(base);await page.locator('#run').filter({hasText:'불러오기'}).waitFor();
  await page.locator('#run').click();await page.locator('#result-content').waitFor({state:'visible'});
+ await page.waitForFunction(()=>document.getElementById('notice').textContent.includes('미리 계산'));
  assert.match(await page.locator('#notice').textContent(),/미리 계산/);
  await page.reload();await page.locator('#result-content').waitFor({state:'visible'});
  await page.route('https://example.supabase.co/**',async route=>{
