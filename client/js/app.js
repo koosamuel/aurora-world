@@ -1,3 +1,4 @@
+import {initForecastFiles,renderForecastFiles} from './forecast-file-view.js';
 import {initSamplingEffects} from './sampling-effect-view.js';
 import {initPatternLinks} from './pattern-link-view.js';
 import {initGeneration} from './generation-view.js';
@@ -5,7 +6,7 @@ import {initSampleReviews} from './sample-review-view.js';
 import {initAISampling} from './ai-sampling-view.js';
 import {initSampling} from './sampling-view.js';
 import {initIdentity} from './identity-view.js';
-import {demoApi,SupabaseApi} from './api.js';
+import {demoApi,SupabaseApi,PreviewApi} from './api.js';
 import {renderPublic} from './public-view.js';
 import {drawChart} from './chart.js';
 import {initLabeling} from './labeling.js';
@@ -14,7 +15,7 @@ const $=id=>document.getElementById(id);
 const names={queued:'대기',running:'계산 중',succeeded:'완료',failed:'실패',cancelled:'취소'};
 const modelNames={naive:'Naive',seasonal_naive:'계절 naive'};
 const fmt=n=>n===null || n===undefined ? '해당 없음' : new Intl.NumberFormat('ko-KR',{maximumFractionDigits:3}).format(n);
-let api, epoch=0, viewSeq=0, selected=null, result=null, polling=null, busy=false, pendingRequest=null;
+let api, epoch=0, viewSeq=0, selected=null, result=null, polling=null, busy=false, pendingRequest=null, fileRunner=false;
 function saved(key,value) { try {if(value===undefined)return sessionStorage.getItem(key);if(value===null)sessionStorage.removeItem(key);else sessionStorage.setItem(key,value);} catch{} }
 function notice(message) { $('notice').textContent=message||'';$('notice').hidden=!message; }
 function empty(message='첫 번째 예측을 시작하세요') {result=null;$('result-content').hidden=true;$('public-result').hidden=true;$('empty-state').hidden=false;$('empty-state').querySelector('h3').textContent=message;}
@@ -29,7 +30,8 @@ for(const b of document.querySelectorAll('[data-tab]')) {
   b.addEventListener('keydown',e=>{if(!['ArrowRight','ArrowLeft','Home','End'].includes(e.key))return;e.preventDefault();const type=e.key==='Home'?'forecast':e.key==='End'?'labeling':b.dataset.tab==='forecast'?'labeling':'forecast';tab(type);$(`tab-${type}`).focus();});
 }
 function publicData(){return api?.dataset?.dataset_kind==='public_retail';}
-function config() {if(publicData()){const text=$('public-policy').value.trim()||'{}';if(new TextEncoder().encode(text).length>65536)throw new Error('정책 입력은 최대 64 KiB입니다.');const p=JSON.parse(text);if(!p||Array.isArray(p)||typeof p!=='object')throw new Error('정책 JSON 객체가 필요합니다.');return {policy_inputs:p};}return {skus:Number($('skus').value),weeks:Number($('weeks').value),horizon:Number($('horizon').value),season_length:Number($('season').value),validation_origins:3};}
+function fileData(){return api?.dataset?.dataset_kind==='weekly_file';}
+function config() {if(fileData())return {horizon:Number($('horizon').value),season_length:Number($('season').value),validation_origins:3};if(publicData()){const text=$('public-policy').value.trim()||'{}';if(new TextEncoder().encode(text).length>65536)throw new Error('정책 입력은 최대 64 KiB입니다.');const p=JSON.parse(text);if(!p||Array.isArray(p)||typeof p!=='object')throw new Error('정책 JSON 객체가 필요합니다.');return {policy_inputs:p};}return {skus:Number($('skus').value),weeks:Number($('weeks').value),horizon:Number($('horizon').value),season_length:Number($('season').value),validation_origins:3};}
 function renderSeries() {
   if(!result)return;const series=result.series.find(s=>s.sku===$('sku-select').value)||result.series[0];
   renderDecisionSku(result.decisions,series.sku);
@@ -43,7 +45,7 @@ function renderResult(data) {
   }
   $('public-result').hidden=true;
   if(data.schema_version!=='aurora-baseline-v1'||data.synthetic!==true)throw new Error('지원하는 합성 기준선 결과가 아닙니다.');
-  result=data;$('input-notice').hidden=!data.input_manifest;$('input-notice').textContent=data.input_manifest?'관측 총출하량 입력 · 품절 '+data.quality.stockouts+'건. 잠재 수요와 다릅니다. 반품은 별도 기록하며, 아래 재고 비교의 단가는 공통 가상값 1,000원입니다.':'';$('empty-state').hidden=true;$('result-content').hidden=false;
+  result=data;renderForecastFiles(data,api);$('input-notice').hidden=!data.input_manifest;$('input-notice').textContent=data.input_manifest?'관측 총출하량 입력 · 품절 '+data.quality.stockouts+'건. 잠재 수요와 다릅니다. 반품은 별도 기록하며, 아래 재고 비교의 단가는 공통 가상값 1,000원입니다.':'';$('empty-state').hidden=true;$('result-content').hidden=false;
   $('metric-skus').textContent=fmt(data.quality.series);$('metric-weeks').textContent=`${data.config.weeks}주 · ${data.input_manifest?"입력 파일":"Seed "+data.config.seed}`;
   for(const [id,model] of [['metric-naive','naive'],['metric-seasonal','seasonal_naive']])$(''+id).textContent=fmt(data.paired_metrics.find(m=>m.model===model&&m.split==='test')?.mae);
   $('sku-select').replaceChildren(...data.series.map(s=>new Option(s.sku,s.sku)));
@@ -57,27 +59,29 @@ async function selectRun(id, ticket=epoch) {
   const adapter=api, viewTicket=++viewSeq;
   const run=await adapter.getRun(id);if(ticket!==epoch||adapter!==api||viewTicket!==viewSeq)return;
   selected=id;for(const b of $('run-list').querySelectorAll('[data-run-id]'))b.setAttribute('aria-pressed',String(b.dataset.runId===id));saved(`aurora-run-${api.mode}`,id);
+  $('forecast-file-cancel-run').hidden=!(adapter.mode==='local'&&adapter.weekly?.()&&['queued','running'].includes(run.status));
   if(run.status==='succeeded')renderResult(run.result);
   else {empty(run.status==='queued'?'워커 실행을 기다리고 있습니다':names[run.status]||run.status);if(run.error)notice(run.error);}
 }
 function updateControls() {
   const cloud=api.mode==='supabase',preview=api.mode==='preview';
-  const observed=publicData();$('run-help').textContent=observed?'공개 청구 수량을 평가하고 가정 기반 재고 시나리오를 비교합니다.':'합성 세그먼트·모델 선택·재고 비교를 함께 계산합니다.';$('run-assumption').textContent=observed?'파일에 고정된 선택·워밍업·평가 분할을 사용합니다. 마지막 평가를 튜닝에 사용하지 않습니다.':'Seed 42 · 검증 원점 3개 · 마지막 구간은 최종 평가용으로 보류';$('public-policy-label').hidden=!observed;$('public-policy').disabled=preview;
+  const observed=publicData(),file=fileData();$('run-help').textContent=observed?'공개 청구 수량을 평가하고 가정 기반 재고 시나리오를 비교합니다.':'합성 세그먼트·모델 선택·재고 비교를 함께 계산합니다.';$('run-assumption').textContent=observed?'파일에 고정된 선택·워밍업·평가 분할을 사용합니다. 마지막 평가를 튜닝에 사용하지 않습니다.':file?'등록 파일의 관측을 그대로 계산합니다. 검증 원점 3개와 마지막 보류 구간을 사용합니다.':'Seed 42 · 검증 원점 3개 · 마지막 구간은 최종 평가용으로 보류';$('public-policy-label').hidden=!observed;$('public-policy').disabled=preview;
   const datasets=api.datasets||[];$('dataset-picker-label').hidden=!datasets.length;
   $('dataset-picker').replaceChildren(...datasets.map(d=>new Option(d.name,d.id)));
   if(api.dataset)$('dataset-picker').value=api.dataset.id;$('dataset-picker').disabled=busy;
   $('connection').textContent=cloud?(api.session?'Supabase · 로그인됨':'Supabase · 로그인 필요'):preview?(observed?'저장된 공개 거래 · 미리보기':'저장된 합성 결과 · 미리보기'):(observed?'로컬 · 공개 거래 계산':'로컬 · 합성 계산');
-  for(const id of ['skus','weeks'])$(id).disabled=cloud||preview||observed;
+  for(const id of ['skus','weeks'])$(id).disabled=cloud||preview||observed||file;
   for(const id of ['horizon','season'])$(id).disabled=preview||observed;
-  $('run').disabled=busy || cloud&&(!api.session||!api.dataset);
+  $('run').disabled=busy || cloud&&(!api.session||!api.dataset) || api.mode==='local'&&file&&!fileRunner;
   $('run').textContent=busy?'요청 중…':preview?(observed?'공개 거래 결과 불러오기':'합성 데모 불러오기'):(observed?'공개 거래·32주 재고 실행 ↗':'합성 기준선 실행 ↗');
   $('login-form').hidden=!cloud;$('logout').hidden=!cloud||!api.session;
   for(const el of $('login-form').querySelectorAll('input,button[type="submit"]'))el.hidden=cloud&&!!api.session;
   $('auth-state').textContent=cloud?(api.session?`로그인: ${api.session.user.email} · 세션은 메모리에만 유지됩니다.`:'로그인 후 프로젝트 멤버 권한을 확인합니다.'):'로컬에서는 새로 계산합니다. GitHub Pages 미리보기는 미리 계산한 합성 결과를 표시합니다.';
-  $('dataset-label').textContent=observed?(api.dataset.name+(preview?' · 저장된 결과':' · 서버 계산')):cloud?(api.dataset?.name||'준비된 합성 데이터셋 없음'):preview?(api.dataset?.name+' · 저장된 결과'):'합성 주간 수요 · 요청마다 계산';
-  if((cloud||observed)&&api.dataset){$('skus').value=api.dataset.generator_config.skus;$('weeks').value=api.dataset.generator_config.weeks;}
-  if(preview){$('skus').value=api.dataset.generator_config.skus;$('weeks').value=api.dataset.generator_config.weeks;$('horizon').value=4;$('season').value=52;}
+  $('dataset-label').textContent=observed?(api.dataset.name+(preview?' · 저장된 결과':' · 서버 계산')):cloud?(api.dataset?.name||'준비된 합성 데이터셋 없음'):preview?(api.dataset?.name+' · 저장된 결과'):file?api.dataset.name+' · 등록 파일에서 계산':'합성 주간 수요 · 요청마다 계산';
+  if((cloud||observed||file)&&api.dataset){$('skus').value=api.dataset.generator_config.skus;$('weeks').value=api.dataset.generator_config.weeks;}
+  if(preview){$('skus').value=api.dataset.generator_config.skus;$('weeks').value=api.dataset.generator_config.weeks;$('horizon').value=4;$('season').value=api.dataset.generator_config.season_length||52;}
   if(observed)$('horizon').value=1;
+  if(file){$('run-help').textContent='등록한 합성 출하 파일의 해시를 검사하고 같은 평가·재고 계산부를 실행합니다.';$('run-assumption').textContent='파일 품목/기간 고정 · 검증 원점3개 · 마지막 구간 최종 평가 · 금액은 공통 가상 정책';if(!preview&&!cloud)$('connection').textContent='로컬 · 등록 합성 파일';}
   $('label-project').textContent='브라우저 합성 데모 · 로그인 없이 실행 · 검수는 현재 브라우저 세션에만 저장됩니다.';
 }
 async function refresh() {
@@ -93,7 +97,7 @@ async function refresh() {
   } catch(error){if(ticket===epoch)notice(error.message);}
 }
 async function changeMode(adapter) {
-  epoch++;clearTimeout(polling);api=adapter;restoreDataset();selected=null;pendingRequest=null;busy=false;notice('');empty();$('run-list').replaceChildren();updateControls();await refresh();
+  epoch++;clearTimeout(polling);api=adapter;restoreDataset();selected=null;pendingRequest=null;busy=false;notice('');empty();$('run-list').replaceChildren();$('forecast-file-cancel-run').hidden=true;updateControls();await refresh();
 }
 $('run-form').addEventListener('submit',async e=>{
   e.preventDefault();if(busy)return;const ticket=epoch,adapter=api;let c;try{c=config();}catch(error){notice('실행 설정: '+error.message);return;}const signature=JSON.stringify([api.dataset?.id,c]);
@@ -113,6 +117,11 @@ $('connect-form').addEventListener('submit',e=>{e.preventDefault();const fd=new 
 $('login-form').addEventListener('submit',async e=>{e.preventDefault();const adapter=api,ticket=epoch,fd=new FormData(e.currentTarget);try{await adapter.login(fd.get('email').trim(),fd.get('password'));if(ticket!==epoch)return;restoreDataset();notice('');updateControls();await refresh();}catch(error){if(ticket===epoch){updateControls();notice(error.message);}}finally{e.target.elements.password.value='';}});
 $('logout').addEventListener('click',async()=>{const adapter=api;epoch++;selected=null;empty('로그아웃되었습니다');clearTimeout(polling);$('run-list').replaceChildren();try{await adapter.logout();}catch(error){notice(error.message);}finally{if(adapter===api)updateControls();}});
 $('demo-mode').addEventListener('click',async()=>{const old=api;if(old.mode==='supabase')await old.logout().catch(()=>{});await changeMode(await demoApi());});
+window.addEventListener('forecast-file-role-changed',e=>{fileRunner=e.detail.role==='designer';if(api)updateControls();});
+window.addEventListener('forecast-files-registered',async e=>{if(api?.mode!=='local'){notice('로컬 파일을 등록했습니다. 로컬 합성 실행 모드에서 데이터셋을 선택하세요.');return;}epoch++;clearTimeout(polling);await api.loadDatasets();api.dataset=api.datasets.find(d=>d.id===e.detail.dataset_id)||api.dataset;selected=null;pendingRequest=null;saved('aurora-dataset-local',api.dataset.id);empty();updateControls();await refresh();});
+window.addEventListener('forecast-files-saved-demo',async()=>{if(api?.mode!=='preview'){notice('저장 예제는 공개 미리보기 모드에서 선택하세요.');return;}const adapter=new PreviewApi();adapter.dataset=adapter.datasets.find(d=>d.id==='saved-uploaded-weekly');saved('aurora-dataset-preview',adapter.dataset.id);await changeMode(adapter);selected=adapter.dataset.id;await selectRun(selected);});
+$('forecast-file-cancel-run').onclick=async()=>{try{await api.cancelRun(selected);await selectRun(selected);await refresh();}catch(e){notice(e.message);}};
+initForecastFiles();
 initLabeling();
 initIdentity();
 initSampling();

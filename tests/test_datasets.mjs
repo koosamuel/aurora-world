@@ -17,3 +17,7 @@ test('cloud dataset choice filters runs and requests chosen dataset',async()=>{
  assert.ok(calls.some(([url])=>url.includes('dataset_id=eq.old')));
  assert.equal(JSON.parse(calls.at(-1)[1].body).p_dataset_id,'old');
 });
+test('local registered files isolate dataset runs and never send generator size controls',async()=>{
+ const old=globalThis.fetch;const calls=[];globalThis.fetch=async(url,options={})=>{calls.push([url,options]);return {ok:true,json:async()=>url==='./api/datasets'?[{id:'local-generated'},{id:'weekly-abc',dataset_kind:'weekly_file'}]:{id:'job'}};};
+ try{const {LocalApi}=await import('../client/js/api.js');const api=new LocalApi();await api.loadDatasets();api.dataset=api.datasets[1];await api.loadDatasets();assert.equal(api.dataset.id,'weekly-abc');await api.listRuns();await api.getRun('job');await api.requestRun({horizon:4,season_length:13,validation_origins:3},'key');const request=JSON.parse(calls.at(-1)[1].body);assert.equal(request.dataset_id,'weekly-abc');assert.equal(request.config.skus,undefined);assert.ok(calls.some(([url])=>url.includes('runs/job?dataset_id=weekly-abc')));await api.cancelRun('job');assert.equal(JSON.parse(calls.at(-1)[1].body).dataset_id,'weekly-abc');}finally{globalThis.fetch=old;}
+});

@@ -16,18 +16,22 @@ export function validatePublicConfig(url, key) {
 }
 export class LocalApi {
   mode = 'local'; datasets=[]; dataset=null;
-  async loadDatasets(){this.datasets=await jsonFetch('./api/datasets');this.dataset=this.datasets[0]||null;}
+  async loadDatasets(){const previous=this.dataset?.id;this.datasets=await jsonFetch('./api/datasets');this.dataset=this.datasets.find(d=>d.id===previous)||this.datasets[0]||null;}
   public(){return this.dataset?.dataset_kind==='public_retail';}
+  weekly(){return this.dataset?.dataset_kind==='weekly_file';}
+  fileQuery(){return '?dataset_id='+encodeURIComponent(this.dataset.id);}
+  fileHeaders(){let token;try{token=sessionStorage.getItem('aurora-review-token');}catch{}return {'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{})};}
   async downloadArtifact(a){return checkedBlob(a.url,a);}
-  listRuns() { return jsonFetch(this.public()?'./api/public/runs':'./api/runs?project_type=forecast'); }
-  getRun(id) { return jsonFetch(this.public()?`./api/public/runs/${encodeURIComponent(id)}`:`./api/runs/${encodeURIComponent(id)}?project_type=forecast`); }
-  requestRun(config, key) { return jsonFetch(this.public()?'./api/public/runs':'./api/runs', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({project_type:'forecast', request_key:key, config})}); }
+  listRuns() { return jsonFetch(this.weekly()?'./api/forecast-files/runs'+this.fileQuery():this.public()?'./api/public/runs':'./api/runs?project_type=forecast'); }
+  getRun(id) { return jsonFetch(this.weekly()?'./api/forecast-files/runs/'+encodeURIComponent(id)+this.fileQuery():this.public()?`./api/public/runs/${encodeURIComponent(id)}`:`./api/runs/${encodeURIComponent(id)}?project_type=forecast`); }
+  requestRun(config,key) {return jsonFetch(this.weekly()?'./api/forecast-files/runs':this.public()?'./api/public/runs':'./api/runs',{method:'POST',headers:this.weekly()?this.fileHeaders():{'Content-Type':'application/json'},body:JSON.stringify({project_type:'forecast',request_key:key,config,...(this.weekly()?{dataset_id:this.dataset.id}:{})})});}
+  cancelRun(id){if(!this.weekly())throw new Error('파일 실행 취소만 지원합니다.');return jsonFetch('./api/forecast-files/runs/'+encodeURIComponent(id)+'/cancel',{method:'POST',headers:this.fileHeaders(),body:JSON.stringify({dataset_id:this.dataset.id})});}
 }
 export class PreviewApi {
   mode = 'preview';
-  datasets=[{id:'saved-demo',name:'기본 합성 · 50 SKU / 156주',file:'baseline.json',generator_config:{skus:50,weeks:156}}, {id:'saved-research',name:'연구 참고 합성 · 100 SKU / 156주',file:'research.json',generator_config:{skus:100,weeks:156}}, {id:'saved-public-retail',name:'UCI 공개 거래 · 100 SKU / 104주',dataset_kind:'public_retail',file:'public-retail.json',generator_config:{skus:100,weeks:104}}];
+  datasets=[{id:'saved-demo',name:'기본 합성 · 50 SKU / 156주',file:'baseline.json',generator_config:{skus:50,weeks:156}}, {id:'saved-research',name:'연구 참고 합성 · 100 SKU / 156주',file:'research.json',generator_config:{skus:100,weeks:156}}, {id:'saved-public-retail',name:'UCI 공개 거래 · 100 SKU / 104주',dataset_kind:'public_retail',file:'public-retail.json',generator_config:{skus:100,weeks:104}}, {id:'saved-uploaded-weekly',name:'ID 감사·파일 등록 합성 · 6 SKU / 80주',dataset_kind:'weekly_file',file:'forecast-files/result.json',generator_config:{skus:6,weeks:80,season_length:13}}];
   dataset=this.datasets[0];
-  async downloadArtifact(a){return checkedBlob('./demo/public-retail/'+a.name,a);}
+  async downloadArtifact(a){return checkedBlob(this.dataset.dataset_kind==='weekly_file'?a.url:'./demo/public-retail/'+a.name,a);}
   async listRuns() { return [{id:this.dataset.id,status:'succeeded'}]; }
   async getRun(id) { if(id!==this.dataset.id)throw new Error('선택한 자료의 실행이 아닙니다.');return {id,status:'succeeded',result:await jsonFetch('./demo/'+this.dataset.file)}; }
   async requestRun() { return {id:this.dataset.id,status:'succeeded'}; }

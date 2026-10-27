@@ -25,6 +25,9 @@ def serve(root, host='127.0.0.1', port=8765, public_input=None, reference_root=N
     pattern_links=PatternLinks(root,reviews)
     from .sampling_effects import EffectStore, decode as effect_decode
     effects=EffectStore(root,pattern_links)
+    from .forecast_files import ForecastFiles, decode as file_decode
+    from .inputs import MAX_BYTES as FILE_BYTES
+    weekly=ForecastFiles(root,reviews)
     pool=ThreadPoolExecutor(max_workers=2)
     if public_input is None:public_input=root.parent/'04_데이터/가공/2026-10-26_UCI_Online_Retail_II/weekly.json'
     from .public_jobs import PublicStore
@@ -46,6 +49,23 @@ def serve(root, host='127.0.0.1', port=8765, public_input=None, reference_root=N
             if not self.allowed_host():return self.respond(dict(error='로컬 호스트만 허용됩니다.'),403)
             path=urlparse(self.path).path
             try:
+                if path.startswith('/api/forecast-files/'):
+                    bits=path.split('/');query=parse_qs(urlparse(self.path).query,keep_blank_values=True)
+                    if path=='/api/forecast-files/datasets':
+                        if query:raise ValueError('파일 목록 쿼리 거부')
+                        return self.respond(weekly.datasets(include_rejected=True))
+                    if path=='/api/forecast-files/runs':
+                        if set(query)!={'dataset_id'} or len(query['dataset_id'])!=1:raise ValueError('단일 dataset_id 필요')
+                        return self.respond(weekly.list_dataset(query['dataset_id'][0]))
+                    if len(bits)==5 and bits[3]=='runs':
+                        if set(query)!={'dataset_id'} or len(query['dataset_id'])!=1:raise ValueError('단일 dataset_id 필요')
+                        row=weekly.get_dataset_run(query['dataset_id'][0],bits[4]);return self.respond(row if row else dict(error='이 데이터셋의 실행 없음'),200 if row else 404)
+                    if query:raise ValueError('파일 API 쿼리 거부')
+                    if len(bits)==6 and bits[3]=='artifacts':
+                        p=weekly.artifact(bits[4],bits[5])
+                        if not p:return self.respond(dict(error='완료한 현재 시도의 파일 없음'),404)
+                        raw=p.read_bytes();self.send_response(200);self.send_header('Content-Type','application/json' if p.suffix=='.json' else 'text/csv; charset=utf-8' if p.suffix=='.csv' else 'text/markdown; charset=utf-8');self.send_header('Content-Length',str(len(raw)));self.send_header('Cache-Control','no-store');self.send_header('X-Content-Type-Options','nosniff');self.send_header('Content-Disposition','attachment; filename='+p.name);self.end_headers();self.wfile.write(raw);return
+                    return self.respond(dict(error='지원하지 않는 파일 입력 경로'),404)
                 if path.startswith('/api/sampling-effects/'):
                     if urlparse(self.path).query:raise ValueError('효과 API 쿼리 거부')
                     if path=='/api/sampling-effects/catalog':return self.respond(effects.catalog())
@@ -122,7 +142,7 @@ def serve(root, host='127.0.0.1', port=8765, public_input=None, reference_root=N
                     if len(bits)!=6:raise ValueError('명세 조회 경로를 확인하세요.')
                     version=int(bits[-1]);row=sampling.get(unquote(bits[-2]),version)
                     return self.respond(row if row else dict(error='등록된 명세 없음'),200 if row else 404)
-                if path=='/api/datasets':return self.respond([dict(id='local-generated',name='로컬 합성 · 새 계산',dataset_kind='synthetic',generator_config=dict(skus=50,weeks=156))]+([public.dataset] if public else []))
+                if path=='/api/datasets':return self.respond([dict(id='local-generated',name='로컬 합성 · 새 계산',dataset_kind='synthetic',generator_config=dict(skus=50,weeks=156))]+([public.dataset] if public else [])+weekly.datasets())
                 if path.startswith('/api/public/artifacts/'):
                     bits=path.split('/')
                     file=public.artifact(bits[-2],bits[-1]) if public and len(bits)==6 else None
@@ -159,8 +179,21 @@ def serve(root, host='127.0.0.1', port=8765, public_input=None, reference_root=N
             try:
                 size=int(self.headers.get('Content-Length','0'))
                 path=urlparse(self.path).path
-                limit=SAMPLING_BYTES if path in ('/api/sampling/validate','/api/sampling/briefs') else 128*1024 if path=='/api/sampling-effects/reports' else 65536
+                limit=FILE_BYTES if path in ('/api/forecast-files/validate','/api/forecast-files/datasets') else SAMPLING_BYTES if path in ('/api/sampling/validate','/api/sampling/briefs') else 128*1024 if path=='/api/sampling-effects/reports' else 65536
                 if not 0<size<=limit:raise ValueError('요청 크기를 확인하세요.')
+                if path.startswith('/api/forecast-files/'):
+                    if urlparse(self.path).query:raise ValueError('파일 API 쿼리 거부')
+                    raw=self.rfile.read(size)
+                    if path=='/api/forecast-files/validate':return self.respond(weekly.validate_file(self.review_token(),raw))
+                    if path=='/api/forecast-files/datasets':return self.respond(weekly.register(self.review_token(),raw,self.headers.get('X-Weekly-SHA256'),self.headers.get('X-Upload-SHA256')),201)
+                    if path=='/api/forecast-files/runs':
+                        row=weekly.request(self.review_token(),file_decode(raw));pool.submit(weekly.work_once);return self.respond(row,202)
+                    bits=path.split('/')
+                    if len(bits)==6 and bits[3]=='runs' and bits[5]=='cancel':
+                        req=file_decode(raw)
+                        if set(req)!={'dataset_id'}:raise ValueError('취소 데이터셋 필요')
+                        row=weekly.cancel_run(self.review_token(),req['dataset_id'],bits[4]);return self.respond(row if row else dict(error='이 데이터셋의 실행 없음'),200 if row else 404)
+                    return self.respond(dict(error='지원하지 않는 파일 경로'),404)
                 if path=='/api/sampling-effects/reports':
                     if urlparse(self.path).query:raise ValueError('효과 API 쿼리 거부')
                     return self.respond(effects.register(self.review_token(),effect_decode(self.rfile.read(size))),201)
@@ -210,7 +243,9 @@ def serve(root, host='127.0.0.1', port=8765, public_input=None, reference_root=N
     stopped=threading.Event()
     def worker_loop():
         while not stopped.is_set():
-            if not work_once(store):stopped.wait(1)
+            progressed=work_once(store)
+            progressed=weekly.work_once() or progressed
+            if not progressed:stopped.wait(1)
     worker=threading.Thread(target=worker_loop,daemon=True)
     worker.start()
     server=ThreadingHTTPServer((host,port),Handler)

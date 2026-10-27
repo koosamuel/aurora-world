@@ -1,6 +1,6 @@
 # 제품 코드 대응·결합 감사 (U19)
 
-생산기지 범위가 다른 같은 코드, 제품의 여러 별칭, 승인·시점·조인 중복을 점검하는 독립 도구입니다. 제품 ID와 패턴 부위명 ID는 별개입니다. 수요예측·라벨링 입력/모델·Supabase 권한을 바꾸지 않습니다. 기업 대응표 승인·ERP 연결·브라우저 업로드·Supabase 저장은 후속입니다.
+생산기지 범위가 다른 같은 코드, 제품의 여러 별칭, 승인·시점·조인 중복을 점검하는 독립 도구입니다. 제품 ID와 패턴 부위명 ID는 별개입니다. 기존 감사와 모델·Supabase 권한을 유지하며, 별도 합성 주간 어댑터의 수요예측 연결·로컬 브라우저 검증/등록을 [추가했습니다](FORECAST_FILES.md). 기업 대응표 승인·ERP/동적 시점 연결·Supabase 저장은 후속입니다.
 
 ## 실행
 
@@ -13,7 +13,7 @@ PYTHONPATH=src python3 -m aurora identity --input configs/examples/identity-conf
 
 정상 종료 0, 계약/파일 오류 1, 격리 또는 대응표 중첩 발견 2입니다. 종료 2도 `mapped.json`, `quarantine.json`, `audit.json`, `report.md`, `artifacts.json`을 남깁니다. 전체 통과는 `ready_for_downstream: true`로만 판단합니다. 파일을 덮어쓰지 않습니다. 마지막 manifest가 없는 디렉터리는 완료 산출물로 취급하지 않습니다.
 
-로컬 웹 수요예측 탭 하단의 **공통 선행 점검 · 제품 코드 대응과 데이터 결합**을 펼쳐 정상/반례를 선택합니다. `/api/identity-demo?case=valid|conflicts`는 허용된 합성 파일만 새로 계산합니다. Pages 화면은 `client/demo/identity/`의 저장된 합성 점검을 표시합니다. 로컬 계산 오류를 저장된 성공 결과로 바꾸지 않습니다. 두 경로 모두 현재 선택한 예측 데이터셋과 독립적이며 실제 ERP/클라우드 계산으로 표시하지 않습니다.
+로컬 웹 수요예측 탭 하단의 **공통 선행 점검 · 제품 코드 대응과 데이터 결합**을 펼쳐 정상/반례를 선택합니다. `/api/identity-demo?case=valid|conflicts`는 허용된 합성 파일만 새로 계산합니다. Pages 화면은 `client/demo/identity/`의 저장된 합성 점검을 표시합니다. 로컬 계산 오류를 저장된 성공 결과로 바꾸지 않습니다. 이 기존 두 점검 경로는 선택한 예측 데이터셋과 독립적입니다. 별도 합성 ID→주간 파일 경로의 실제 계산/출처는 FORECAST_FILES.md를 따르며 기업 ERP/클라우드 연결로 표시하지 않습니다.
 
 ## 입력 계약
 
