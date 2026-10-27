@@ -84,6 +84,26 @@
  </div>
 </section>
 
+<section class="panel ai-panel" aria-label="AI 원화 해석과 이미지 생성">
+ <div class="row-between"><div><p class="eyebrow">U21 / AI IMAGE LAB</p><h2>원화에서 AI 이미지 후보로</h2></div><span id="ai-mode" class="badge neutral">준비 중</span></div>
+ <p class="muted">CLIP이 원화 픽셀에서 7개 상품군 후보를 비교하고, Stable Diffusion 1.5가 같은 원화를 두 생성 강도로 바꿉니다.</p>
+ <div class="form-row generation-form"><label>자체 합성 원화<select id="ai-source"></select></label><label class="generation-seed">생성 시드<input id="ai-seed" type="number" min="0" max="2147483647" value="42" step="1"></label><button id="ai-run" disabled>AI 준비 중</button></div>
+ <p id="ai-status" role="status" aria-live="polite">AI 자료를 준비하고 있습니다.</p>
+ <p class="generation-boundary">학습된 모델의 2D 시각 후보 · 치수·원단 물성·필수 조건 충족·3D·봉제 적합성은 미검증</p>
+ <div id="ai-result" hidden>
+  <p id="ai-interpretation"></p>
+  <div class="ai-images">
+   <article><h3>01 / 입력 원화</h3><img id="ai-input" alt="AI에 입력한 자체 합성 원화"></article>
+   <article><h3>02 / 원화 보존 우선</h3><img id="ai-preserve" alt="생성 강도 0.45 AI 이미지"><p id="ai-preserve-detail" class="small muted"></p></article>
+   <article><h3>03 / 재해석 확대</h3><img id="ai-reinterpret" alt="생성 강도 0.70 AI 이미지"><p id="ai-reinterpret-detail" class="small muted"></p></article>
+  </div>
+  <p id="ai-condition-review" class="small muted"></p><details><summary>생성 프롬프트</summary><p id="ai-prompt"></p></details>
+  <div id="ai-downloads" class="sampling-actions"></div>
+  <details><summary>모델·입력·파일 해시 / 원화 해석 / 추론 설정 / 미검증 항목</summary><pre id="ai-report"></pre></details>
+ </div>
+ <p class="small muted">원화는 자체 합성 도형입니다. 모델: <a href="https://huggingface.co/laion/CLIP-ViT-B-32-laion2B-s34B-b79K" target="_blank" rel="noopener">OpenCLIP (MIT)</a>, <a href="https://huggingface.co/stable-diffusion-v1-5/stable-diffusion-v1-5" target="_blank" rel="noopener">Stable Diffusion 1.5</a> · <a href="https://huggingface.co/spaces/CompVis/stable-diffusion-license" target="_blank" rel="noopener">CreativeML OpenRAIL-M 사용 조건</a>. 기존 3D 기하 생성과 독립적입니다. 게시 화면은 저장된 AI 추론만 조회합니다.</p>
+</section>
+
 <div class="divider"></div>
 
 <div class="section-heading"><div><p class="eyebrow">PATTERN LABELING · SYNTHETIC DEMO</p><h2>패턴 부위명 라벨링 실험실</h2><p class="muted">가상 조각을 분류하고, 표준명 후보를 확인해 직접 검수합니다.</p></div><span class="badge">합성 데이터로 실행 가능</span></div>

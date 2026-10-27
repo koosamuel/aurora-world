@@ -1,0 +1,5 @@
+{
+  "python": "/absolute/path/to/aurora-world/.venv-ai/bin/python",
+  "sd15": "/absolute/path/to/models--stable-diffusion-v1-5--stable-diffusion-v1-5/snapshots/451f4fe16113bff5a5d2269ed5ad43b0592e9a14",
+  "clip": "/absolute/path/to/models--laion--CLIP-ViT-B-32-laion2B-s34B-b79K/snapshots/1a25a446712ba5ee05982a381eed697ef9b435cf"
+}

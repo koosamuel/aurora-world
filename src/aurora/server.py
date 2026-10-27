@@ -17,6 +17,8 @@ def serve(root, host='127.0.0.1', port=8765, public_input=None, reference_root=N
         candidate=root.parent/'04_데이터/원본/공개연구데이터/ABO_디지털샘플링_선정'
         if candidate.is_dir():reference_root=candidate
     generation=GenerationService(root,sampling,reference_root)
+    from .ai_sampling import AIService
+    ai=AIService(root,sampling)
     pool=ThreadPoolExecutor(max_workers=2)
     if public_input is None:public_input=root.parent/'04_데이터/가공/2026-10-26_UCI_Online_Retail_II/weekly.json'
     from .public_jobs import PublicStore
@@ -35,6 +37,20 @@ def serve(root, host='127.0.0.1', port=8765, public_input=None, reference_root=N
             if not self.allowed_host():return self.respond(dict(error='로컬 호스트만 허용됩니다.'),403)
             path=urlparse(self.path).path
             try:
+                if path.startswith('/api/ai-sampling/'):
+                    if urlparse(self.path).query:raise ValueError('AI API 쿼리는 허용하지 않습니다.')
+                    if path=='/api/ai-sampling/catalog':return self.respond(ai.catalog())
+                    bits=path.split('/')
+                    if len(bits)==5 and bits[3]=='runs':
+                        row=ai.get(bits[-1]);return self.respond(row if row else dict(error='AI 실행 없음'),200 if row else 404)
+                    if len(bits)==6 and bits[3]=='artifacts':
+                        file=ai.artifact(bits[-2],bits[-1])
+                        if not file:return self.respond(dict(error='완료한 AI 파일 없음'),404)
+                        data=file.read_bytes();self.send_response(200)
+                        self.send_header('Content-Type','image/png' if file.suffix=='.png' else 'application/json')
+                        self.send_header('Content-Length',str(len(data)));self.send_header('Cache-Control','no-store')
+                        self.send_header('X-Content-Type-Options','nosniff');self.end_headers();self.wfile.write(data);return
+                    return self.respond(dict(error='지원하지 않는 AI 경로'),404)
                 if path.startswith('/api/generation/'):
                     if urlparse(self.path).query:raise ValueError('생성 API 쿼리는 허용하지 않습니다.')
                     if path=='/api/generation/catalog':return self.respond(generation.catalog())
@@ -103,6 +119,11 @@ def serve(root, host='127.0.0.1', port=8765, public_input=None, reference_root=N
                     if urlparse(self.path).query:raise ValueError('생성 API 쿼리는 허용하지 않습니다.')
                     req=generation_decode(self.rfile.read(size));row,new=generation.request(req)
                     if new:pool.submit(generation.work,row['id'])
+                    return self.respond(row,202)
+                if path=='/api/ai-sampling/runs':
+                    if urlparse(self.path).query:raise ValueError('AI API 쿼리는 허용하지 않습니다.')
+                    req=generation_decode(self.rfile.read(size));row,new=ai.request(req)
+                    if new:pool.submit(ai.work,row['id'])
                     return self.respond(row,202)
                 body=json.loads(self.rfile.read(size))
                 if not isinstance(body,dict):raise ValueError('객체 형식의 요청이 필요합니다.')
