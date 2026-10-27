@@ -1,3 +1,4 @@
+import {initSampling} from './sampling-view.js';
 import {initIdentity} from './identity-view.js';
 import {demoApi,SupabaseApi} from './api.js';
 import {renderPublic} from './public-view.js';
@@ -109,6 +110,7 @@ $('logout').addEventListener('click',async()=>{const adapter=api;epoch++;selecte
 $('demo-mode').addEventListener('click',async()=>{const old=api;if(old.mode==='supabase')await old.logout().catch(()=>{});await changeMode(await demoApi());});
 initLabeling();
 initIdentity();
+initSampling();
 tab(location.hash.slice(2));
 const configured=window.AURORA_CONFIG;
 if(configured?.supabaseUrl){$('connect-form').elements.url.value=configured.supabaseUrl;$('connect-form').elements.key.value=configured.publishableKey;}

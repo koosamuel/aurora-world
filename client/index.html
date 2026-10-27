@@ -16,7 +16,7 @@
 <form id="connect-form" class="form-row"><label>프로젝트 URL<input name="url" type="url" placeholder="https://your-project.supabase.co" required></label><label>Publishable / anon key<input name="key" type="text" autocomplete="off" required placeholder="sb_publishable_…"></label><button type="submit">연결 모드로 전환</button><button id="demo-mode" type="button" class="secondary">합성 데모 모드</button></form>
 <form id="login-form" class="form-row" hidden><label>이메일<input name="email" type="email" autocomplete="username" required></label><label>비밀번호<input name="password" type="password" autocomplete="current-password" required></label><button type="submit">로그인</button><button id="logout" type="button" class="secondary" hidden>로그아웃</button></form>
 <p id="auth-state" class="muted"></p></section>
-<nav class="tabs" role="tablist" aria-label="프로젝트 선택"><button id="tab-forecast" role="tab" aria-selected="true" aria-controls="forecast-panel" data-tab="forecast">01 <span>수요예측·운전자본</span><span class="tab-status">진행 중</span></button><button id="tab-labeling" role="tab" aria-selected="false" aria-controls="labeling-panel" data-tab="labeling" tabindex="-1">02 <span>패턴 부위명 자동 라벨링</span><span class="tab-status">합성 데모</span></button></nav>
+<nav class="tabs" role="tablist" aria-label="프로젝트 선택"><button id="tab-forecast" role="tab" aria-selected="true" aria-controls="forecast-panel" data-tab="forecast">01 <span>수요예측·운전자본</span><span class="tab-status">진행 중</span></button><button id="tab-labeling" role="tab" aria-selected="false" aria-controls="labeling-panel" data-tab="labeling" tabindex="-1">02 <span>디지털 샘플링·라벨링</span><span class="tab-status">합성 데모</span></button></nav>
 <div id="notice" role="status" aria-live="polite" class="notice" hidden></div>
 <section id="forecast-panel" role="tabpanel" aria-labelledby="tab-forecast">
 <div class="section-heading"><div><p class="eyebrow">DEMAND FORECASTING</p><h2>수요예측 기준선</h2><p class="muted">합성 이력과 공개 거래를 구분해 예측·모델 선택·재고정책을 비교합니다.</p></div><span class="badge neutral">DEM-01 / DEM-03</span></div>
@@ -55,6 +55,20 @@
 <p class="small muted">제품 ID 점검이며 부위명 표준화와 구분합니다. 기업 코드 승인·ERP 연결·Supabase 대응표 저장은 후속 범위입니다.</p>
 </details></section>
 <section id="labeling-panel" role="tabpanel" aria-labelledby="tab-labeling" hidden>
+<div class="section-heading"><div><p class="eyebrow">DIGITAL SAMPLING · INPUT PREPARATION</p><h2>디지털 샘플링 입력 준비</h2><p class="muted">가상 아트워크의 치수·원단·색상 조건과 현행 제작 기록을 버전으로 관리합니다.</p></div><span id="sampling-mode" class="badge">U20 · 준비 중</span></div>
+<section class="panel sampling-panel" aria-label="합성 디지털 샘플링 명세">
+<p class="small muted">일반적인 동물·자세·둥근 외형을 참고해 새로 그린 합성 원화입니다. 치수·원단·제작/BOM 기록은 가상값이며 회사 제품 사양이 아닙니다. 샘플 생성·디지털 승인·3D/패턴화는 후속 단계입니다.</p>
+<div class="sampling-toolbar"><label>합성 제품<select id="sampling-product"></select></label><label>명세 버전<select id="sampling-version"></select></label><button id="sampling-revise" class="secondary" type="button">수정본 만들기</button><label class="sampling-file-label">합성 명세 JSON 파일<input id="sampling-file" type="file" accept=".json,application/json"></label></div>
+<p id="sampling-status" class="notice" role="status" aria-live="polite">합성 명세를 준비하고 있습니다.</p>
+<div class="sampling-grid"><aside><img id="sampling-artwork" class="sampling-artwork" alt="새로 그린 가상 제품의 개념 원화"><h3 id="sampling-name"></h3><p id="sampling-version-label" class="small muted"></p><p id="sampling-colors" class="small"></p><p id="sampling-provenance" class="small muted"></p></aside>
+<div><fieldset id="sampling-fields"><legend>요구 명세</legend><div class="sampling-dimensions"><label>높이<input id="sampling-height" type="number" step="any" min="0.1" required></label><label>너비<input id="sampling-width" type="number" step="any" min="0.1" required></label><label>깊이<input id="sampling-depth" type="number" step="any" min="0.1" required></label><label>단위<select id="sampling-unit"><option value="mm">mm</option><option value="cm">cm</option></select></label></div><div class="two-fields"><label>가상 원단 코드<input id="sampling-fabric-code" maxlength="300"></label><label>원단 조건<input id="sampling-fabric" maxlength="300"></label></div><label>필수 조건 · 한 줄에 하나<textarea id="sampling-condition" rows="3" maxlength="6000"></textarea></label></fieldset>
+<div class="sampling-actions"><button id="sampling-validate" class="secondary" type="button">입력 검증</button><button id="sampling-save" class="primary" type="button">검증 명세 등록</button><button id="sampling-export" class="secondary" type="button">명세 JSON 받기</button></div>
+<h3>현행 측정 입력</h3><p id="sampling-baseline"></p><p class="small muted">미측정은 0으로 표시하지 않습니다. 기존 제작 횟수와 개발기간을 입력하는 단계이며 개선·절감 효과를 계산한 결과가 아닙니다.</p><details><summary>제작 사건·BOM 수정 기록</summary><pre id="sampling-events"></pre></details>
+</div></div><details><summary>입력 명세·파일 해시 확인</summary><pre id="sampling-checksum"></pre><pre id="sampling-json"></pre></details>
+<p class="small muted">U20의 등록은 개발 PC의 로컬 저장입니다. Supabase 연결 상태와 독립적이며 기업 원본을 업로드하는 기능이 아닙니다. 배포 화면은 저장된 예제를 제공합니다.</p>
+</section>
+<div class="divider"></div>
+
 <div class="section-heading"><div><p class="eyebrow">PATTERN LABELING · SYNTHETIC DEMO</p><h2>패턴 부위명 라벨링 실험실</h2><p class="muted">가상 조각을 분류하고, 표준명 후보를 확인해 직접 검수합니다.</p></div><span class="badge">합성 데이터로 실행 가능</span></div>
 <div class="panel label-start"><div><h3>데이터에서 검수까지, 직접 실행해 보세요</h3><p class="muted">100개 디자인 · 1,200개 조각 · 12개 가상 표준명. 형상 분류는 7개 부위군까지 판단하며 좌우·앞뒤는 검수로 구분합니다.</p><p id="label-project" class="small muted">브라우저 합성 데모 · 로그인 없이 실행 · 서버에 검수 결과를 저장하지 않습니다.</p></div><button id="label-run" class="primary">합성 라벨링 데모 실행 ↗</button></div>
 <p id="label-status" class="notice" role="status" aria-live="polite">실행 버튼을 누르면 학습된 기준선을 불러와 선택 디자인의 조각 12개를 실제로 분류합니다.</p>

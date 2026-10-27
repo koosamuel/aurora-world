@@ -1,0 +1,81 @@
+{
+  "schema_version": "aurora-sampling-brief-v1",
+  "data_kind": "synthetic",
+  "product_id": "SYN-CAT",
+  "product_name": "가상 앉은 고양이",
+  "brief_version": 2,
+  "previous_checksum": "1d70c1630e1af110213d223eb622951ddbd274671592f8d17ab6139c4c464c20",
+  "artwork_version": 1,
+  "artwork": {
+    "file_name": "cat-concept.svg",
+    "media_type": "image/svg+xml",
+    "sha256": "7854cb0ca20dedd0eef07debb27a6ebdc58f206b0a0c50b53a1ba3f38a91b6b4",
+    "width_mm": 210,
+    "height_mm": 210,
+    "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"210mm\" height=\"210mm\" viewBox=\"0 0 210 210\"><rect x=\"0\" y=\"0\" width=\"210\" height=\"210\" fill=\"#F8FAF7\"/><path d=\"M 60 86 L 64 37 L 92 66 Z\" fill=\"#D9AB76\"/><path d=\"M 118 66 L 146 37 L 150 86 Z\" fill=\"#D9AB76\"/><ellipse cx=\"105\" cy=\"144\" rx=\"58\" ry=\"45\" fill=\"#D9AB76\"/><ellipse cx=\"105\" cy=\"100\" rx=\"49\" ry=\"42\" fill=\"#D9AB76\"/><circle cx=\"87\" cy=\"97\" r=\"4\" fill=\"#253D3D\"/><circle cx=\"123\" cy=\"97\" r=\"4\" fill=\"#253D3D\"/><path d=\"M 96 116 Q 105 124 114 116\" fill=\"none\" stroke=\"#253D3D\" stroke-width=\"2\"/></svg>"
+  },
+  "requirements": {
+    "dimensions": {
+      "height": 180,
+      "width": 125,
+      "depth": 105,
+      "unit": "mm"
+    },
+    "fabric": {
+      "code": "SYN-FAB-4",
+      "description": "가상 봉제 원단 · 제품 실사양 아님"
+    },
+    "colors": [
+      {
+        "part": "body",
+        "name": "가상 기본색",
+        "hex": "#D9AB76"
+      }
+    ],
+    "must_have": [
+      "부드러운 둥근 외형",
+      "작은 부자재 분리 방지 검토 · 합성 조건",
+      "크기 수정본 검토 · 합성"
+    ]
+  },
+  "rights": {
+    "source_type": "self_generated_synthetic",
+    "company_data": false,
+    "allowed_use": "public_synthetic_demo",
+    "provenance": "사용자가 제공한 브랜드 소개 화면의 일반적인 동물·자세·색상·둥근 외형만 참고. 로고·캐릭터·사진은 포함하지 않음. 원화는 독립 기하 도형이며 치수·원단·조건·현행 이력은 모두 가상."
+  },
+  "baseline": {
+    "status": "synthetic_recorded",
+    "window_start": "2026-09-01",
+    "window_end": "2026-09-30",
+    "time_definition": "합성 기준: 명세 접수부터 기존 샘플 최종 검토 완료까지의 달력 경과시간",
+    "started_at": "2026-09-01T09:00:00Z",
+    "ended_at": "2026-09-15T09:00:00Z",
+    "physical_samples": [
+      {
+        "event_id": "MAKE-1",
+        "occurred_at": "2026-09-03T09:00:00Z",
+        "quantity": 1
+      },
+      {
+        "event_id": "MAKE-2",
+        "occurred_at": "2026-09-10T09:00:00Z",
+        "quantity": 2
+      }
+    ],
+    "bom_changes": [
+      {
+        "event_id": "BOM-1",
+        "occurred_at": "2026-09-05T09:00:00Z",
+        "reason": "error_correction",
+        "description": "합성 원단 수량 기입 오류 수정"
+      },
+      {
+        "event_id": "BOM-2",
+        "occurred_at": "2026-09-11T09:00:00Z",
+        "reason": "design_change",
+        "description": "합성 디자인 조건 변경"
+      }
+    ]
+  }
+}

@@ -10,6 +10,8 @@ from .jobs import Store, PROJECTS, work_once
 
 def serve(root, host='127.0.0.1', port=8765, public_input=None):
     root=Path(root); store=Store(root/'results/local-demo.sqlite3')
+    from .sampling import BriefStore, Conflict, MAX_BYTES as SAMPLING_BYTES, decode as sampling_decode, envelope as sampling_envelope, seed as sampling_seed
+    sampling=BriefStore(root/'results/sampling-briefs.sqlite3');sampling_seed(sampling,root)
     pool=ThreadPoolExecutor(max_workers=2)
     if public_input is None:public_input=root.parent/'04_데이터/가공/2026-10-26_UCI_Online_Retail_II/weekly.json'
     from .public_jobs import PublicStore
@@ -28,6 +30,12 @@ def serve(root, host='127.0.0.1', port=8765, public_input=None):
             if not self.allowed_host():return self.respond(dict(error='로컬 호스트만 허용됩니다.'),403)
             path=urlparse(self.path).path
             try:
+                if path=='/api/sampling/briefs':return self.respond(sampling.list())
+                if path.startswith('/api/sampling/briefs/'):
+                    bits=path.split('/')
+                    if len(bits)!=6:raise ValueError('명세 조회 경로를 확인하세요.')
+                    version=int(bits[-1]);row=sampling.get(unquote(bits[-2]),version)
+                    return self.respond(row if row else dict(error='등록된 명세 없음'),200 if row else 404)
                 if path=='/api/datasets':return self.respond([dict(id='local-generated',name='로컬 합성 · 새 계산',dataset_kind='synthetic',generator_config=dict(skus=50,weeks=156))]+([public.dataset] if public else []))
                 if path.startswith('/api/public/artifacts/'):
                     bits=path.split('/')
@@ -63,7 +71,12 @@ def serve(root, host='127.0.0.1', port=8765, public_input=None):
                 return self.respond(dict(error='다른 출처의 요청입니다.'),403)
             try:
                 size=int(self.headers.get('Content-Length','0'))
-                if not 0<size<=65536:raise ValueError('요청 크기를 확인하세요.')
+                path=urlparse(self.path).path
+                limit=SAMPLING_BYTES if path in ('/api/sampling/validate','/api/sampling/briefs') else 65536
+                if not 0<size<=limit:raise ValueError('요청 크기를 확인하세요.')
+                if path in ('/api/sampling/validate','/api/sampling/briefs'):
+                    brief=sampling_decode(self.rfile.read(size))
+                    return self.respond(sampling_envelope(brief) if path.endswith('/validate') else sampling.register(brief),200 if path.endswith('/validate') else 201)
                 body=json.loads(self.rfile.read(size))
                 if not isinstance(body,dict):raise ValueError('객체 형식의 요청이 필요합니다.')
                 path=urlparse(self.path).path
@@ -78,6 +91,7 @@ def serve(root, host='127.0.0.1', port=8765, public_input=None):
                     r=store.cancel(path.split('/')[-2],body.get('project_type'))
                     return self.respond(r if r else dict(error='실행을 찾을 수 없습니다.'),200 if r else 404)
                 return self.respond(dict(error='지원하지 않는 요청입니다.'),404)
+            except Conflict as e:return self.respond(dict(error=str(e)),409)
             except (ValueError,TypeError) as e:return self.respond(dict(error=str(e)),400)
     # A periodic worker also recovers expired leases after startup.
     stopped=threading.Event()
