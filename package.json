@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test:sql": "node tests/test_sql.mjs",
+    "test:sql": "node tests/test_sql.mjs && node tests/test_sampling_sql.mjs",
     "build:viewer": "node tools/build_viewer.mjs"
   },
   "devDependencies": {

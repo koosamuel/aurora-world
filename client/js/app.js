@@ -1,3 +1,4 @@
+import {setSamplingConnection,initSamplingQueue} from './sampling-connection.js';
 import {initForecastFiles,renderForecastFiles} from './forecast-file-view.js';
 import {initSamplingEffects} from './sampling-effect-view.js';
 import {initPatternLinks} from './pattern-link-view.js';
@@ -64,6 +65,8 @@ async function selectRun(id, ticket=epoch) {
   else {empty(run.status==='queued'?'워커 실행을 기다리고 있습니다':names[run.status]||run.status);if(run.error)notice(run.error);}
 }
 function updateControls() {
+  setSamplingConnection(api);
+  $("sampling-cloud-state").textContent=api.mode==='supabase'?(api.session?'Supabase 로그인됨 · 디지털 샘플링 역할: '+(api.samplingRole||'멤버 아님')+(['runner','admin'].includes(api.samplingRole)?' · U20 검증/등록·U21 새 생성 가능':' · 원격 명세/결과 열람만 가능'):'Supabase 연결 · 프로젝트 멤버 계정으로 로그인하세요.'):'저장 예제/로컬 모드입니다. 서버 연결·로그인으로 원격 실행을 선택하세요.';
   const cloud=api.mode==='supabase',preview=api.mode==='preview';
   const observed=publicData(),file=fileData();$('run-help').textContent=observed?'공개 청구 수량을 평가하고 가정 기반 재고 시나리오를 비교합니다.':'합성 세그먼트·모델 선택·재고 비교를 함께 계산합니다.';$('run-assumption').textContent=observed?'파일에 고정된 선택·워밍업·평가 분할을 사용합니다. 마지막 평가를 튜닝에 사용하지 않습니다.':file?'등록 파일의 관측을 그대로 계산합니다. 검증 원점 3개와 마지막 보류 구간을 사용합니다.':'Seed 42 · 검증 원점 3개 · 마지막 구간은 최종 평가용으로 보류';$('public-policy-label').hidden=!observed;$('public-policy').disabled=preview;
   const datasets=api.datasets||[];$('dataset-picker-label').hidden=!datasets.length;
@@ -121,6 +124,8 @@ window.addEventListener('forecast-file-role-changed',e=>{fileRunner=e.detail.rol
 window.addEventListener('forecast-files-registered',async e=>{if(api?.mode!=='local'){notice('로컬 파일을 등록했습니다. 로컬 합성 실행 모드에서 데이터셋을 선택하세요.');return;}epoch++;clearTimeout(polling);await api.loadDatasets();api.dataset=api.datasets.find(d=>d.id===e.detail.dataset_id)||api.dataset;selected=null;pendingRequest=null;saved('aurora-dataset-local',api.dataset.id);empty();updateControls();await refresh();});
 window.addEventListener('forecast-files-saved-demo',async()=>{if(api?.mode!=='preview'){notice('저장 예제는 공개 미리보기 모드에서 선택하세요.');return;}const adapter=new PreviewApi();adapter.dataset=adapter.datasets.find(d=>d.id==='saved-uploaded-weekly');saved('aurora-dataset-preview',adapter.dataset.id);await changeMode(adapter);selected=adapter.dataset.id;await selectRun(selected);});
 $('forecast-file-cancel-run').onclick=async()=>{try{await api.cancelRun(selected);await selectRun(selected);await refresh();}catch(e){notice(e.message);}};
+$('sampling-connect').onclick=async()=>{$('settings').hidden=false;$('settings-toggle').setAttribute('aria-expanded','true');if(api?.mode!=='supabase')await changeMode(new SupabaseApi($('connect-form').elements.url.value,$('connect-form').elements.key.value));$('settings').scrollIntoView({block:'start'});$('login-form').elements.email.focus();};
+initSamplingQueue();
 initForecastFiles();
 initLabeling();
 initIdentity();

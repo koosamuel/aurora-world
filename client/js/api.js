@@ -58,6 +58,7 @@ export class SupabaseApi {
   project() { const p=this.projects.find(p=>p.project_type==='forecast'); if(!p) throw new Error('접근 가능한 수요예측 프로젝트가 없습니다.'); return p; }
   async loadProjects() {
     this.projects = await this.call('/rest/v1/projects?select=id,name,project_type&order=created_at');
+    const label=this.projects.find(p=>p.project_type==='labeling');this.samplingRole=null;if(label){const memberships=await this.call('/rest/v1/project_members?select=role&project_id=eq.'+label.id+'&user_id=eq.'+this.session.user.id);this.samplingRole=memberships[0]?.role||null;}
     const p=this.projects.find(p=>p.project_type==='forecast');
     this.datasets=[];
     if(p){try{this.datasets=await this.call(`/rest/v1/datasets?select=id,name,dataset_kind,synthetic,generator_config&project_id=eq.${p.id}&status=eq.ready&order=created_at.desc&limit=30`);this.publicExecutionReady=true;}catch(e){if(!/dataset_kind|column|schema cache/i.test(e.message))throw e;this.datasets=await this.call(`/rest/v1/datasets?select=id,name,generator_config&project_id=eq.${p.id}&status=eq.ready&synthetic=eq.true&order=created_at.desc&limit=30`);this.publicExecutionReady=false;}}
