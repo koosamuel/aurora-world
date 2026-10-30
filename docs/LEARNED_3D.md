@@ -5,7 +5,9 @@
 The existing U20 → U21 client/server now supports **prepare → inspect foreground →
 explicitly confirm → local neural inference → inspect/download GLB**. No inference may
 start from the upload/preparation request alone. The current experimental engine is
-**TripoSG-scribble**, directly conditioned on the sketch and a fixed, disclosed BUNNY prompt.
+**TripoSG-scribble**, directly conditioned on the sketch and a fixed, disclosed family caption.
+Existing U20 upload remains BUNNY-only; four independent local demo sources now use
+BUNNY/BEAR/ELEPHANT/DUCK captions without registering or mislabeling them as U20 briefs.
 Its output uses a constant neutral material: it does NOT synthesize texture or recover eyes/nose markings.
 Legacy TripoSR remains an explicit local configuration option, never a silent failure fallback.
 Requested dimensions are recorded only; neither engine is dimension-calibrated, design-approved
@@ -37,7 +39,7 @@ retain their supplied foreground alpha. No fourth TripoSR reconstruction was run
 2. The UI must display the preview and receive a separate explicit foreground confirmation.
    Dark-pixel coverage is a heuristic diagnostic, NOT semantic completeness or 3D accuracy.
 3. Confirmation rechecks the brief and all prepared files. Stale/mutated/unconfirmed inputs do not queue.
-4. TripoSG-scribble uses a fixed developer BUNNY prompt, seed42, 16steps, sketch confidence.4,
+4. TripoSG-scribble uses a fixed developer caption (BUNNY for existing U20 upload; per-family for local demos), seed42, 16steps, sketch confidence.4,
    prompt confidence1, 512latent tokens, non-flash dense SDF grid128. These are recorded assumptions,
    not automatic extraction/fulfilment of the whole U20 brief.
 5. A normal-orientation check and constant neutral vertex color are explicit postprocessing.
@@ -135,6 +137,38 @@ inference timeout and60-second preparation timeout. One active neural 3D request
 executor serializes existing 2D AI and new 3D jobs. Restart marks preparing/queued/running jobs failed while prepared inputs remain inspectable.
 Leaving the page does not cancel the server job. Inputs stay on this Mac; no paid API/cloud upload.
 
+## Four built-in local sketch demos
+
+In the learned 3D panel, select one of the four thumbnail cards: rabbit, bear, elephant, duck.
+Selection alone performs NO preparation/inference. Check local storage consent, click input preparation,
+inspect the foreground, then explicitly confirm generation. No file picker or U20 selection is needed.
+The separate upload-mode button preserves the existing BUNNY-only U20 route.
+
+Sources are the existing project processed JPEGs in the sibling directory
+`04_데이터/가공/2026-10-29_봉제완구_스케치4종/`; images are NOT bundled/pushed to GitHub/Pages.
+Missing local files are omitted. Only these four allowlisted basenames/IDs can be served over loopback;
+requests cannot select arbitrary paths/URLs/prompts. Symlink files and images over2MiB are rejected.
+The directory naming describes supplied demo labels, not automated species recognition. In particular,
+the file labeled elephant shows a short rounded snout rather than a clear long trunk: its fixed caption
+keeps the short snout visible in the drawing instead of claiming verified elephant anatomy.
+
+- GET /api/learned3d/demos → available metadata/checksums, captions and same-origin image routes.
+- GET /api/learned3d/demo-images/{rabbit|bear|elephant|duck} → the local JPEG only.
+- POST /api/learned3d/demo-runs → ≤64KiB strict JSON: demo_id, source_checksum, storage_consent:true.
+  This returns a prepared input, NOT a generated mesh. Confirmation uses the existing /runs/{id}/confirm.
+- A local-demo:{id} source is synthetic and independent of the U20 brief database. Its SHA binds the
+  original image, family, fixed caption and illustrative dimensions. Direct /runs submissions cannot
+  substitute another image while claiming a demo ID. Confirmation and projection recheck the source.
+- Source-kind/family are persisted in state and passed as an allowlisted worker argument. Arbitrary
+  prompts/model paths are never accepted from the browser. These are manually written example captions,
+  not automatic condition extraction or proof of design compliance. Dimensions180×300×120mm are metadata
+  placeholders only and do not scale the output. No U20/U22 approvals are added or inherited.
+- Capabilities supports_demos:true is required; legacy or unconfigured servers do not expose the cards.
+  Demo selection resets consent and previous results; direct-upload/connection changes reset the mode.
+- Model-free tests cover all four preflights, consent/current hash, modified/mismatched files,
+  path/unknown IDs, legacy-engine denial, stale confirmation and unchanged U20 family restriction.
+  tools/verify_sketch_demos.mjs is an opt-in REAL four-inference browser check with private evidence.
+
 ## Optional visible-surface sketch projection (experimental)
 
 Only explicitly confirmed, successful TripoSG runs can produce a separate color derivative.
@@ -173,7 +207,7 @@ which CI installs without downloading model weights.
 
 ## Verification and next decision
 
-- Latest full local Python211 pass, including14 new projection tests and13 learned3D service/preprocessor tests; JS14 pass;
+- Latest full local Python219 pass, including8 demo tests and14 projection tests and13 learned3D service/preprocessor tests; JS14 pass;
   SQL/RLS105 pass with Auth/Storage doubles (not new live Supabase verification).
 - The expanded13 cover no inference before confirmation, explicit boolean/hash, stale source,
   corrupted prepared input/preview, one-active queue, idempotent confirmation, worker failure without
@@ -191,6 +225,10 @@ which CI installs without downloading model weights.
   SHA, hash-checked projected files, idempotent reuse, private-log denial, source-switch reset and390px
   with no page errors/overflow. Earlier CPU prototypes2 + integrated1 are3 projections, not3 models.
   Stored actual evidence is project processed data 2026-10-30_스케치3D_원화투영/.
+- Latest four-demo browser check:4 REAL fresh inferences with matching per-family captions and source
+  identities; all GLB/input/report hashes verified, duck projection geometry preserved, consent/stale
+  rejection, no selection/preflight inference, upload-mode reset and390px with no errors/overflow.
+  Evidence: project processed data 2026-10-30_스케치4종_데모검증/.
 - Current code/test work does not verify a GitHub Actions/Pages deployment or Supabase model route.
 
 Next: compare more held-out sketches and front/side references; define acceptable ear/foot details and

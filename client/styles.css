@@ -47,3 +47,5 @@ textarea{width:100%;min-height:7rem;resize:vertical;font:inherit;border:1px soli
 #learned3d-panel pre{max-height:440px;max-width:100%;overflow:auto}
 #l3-downloads{display:flex;flex-wrap:wrap;gap:12px}
 @media(max-width:700px){#learned3d-panel .fit-grid{grid-template-columns:minmax(0,1fr)}#learned3d-panel .fit-grid img{height:280px}#learned3d-panel .fit-viewer{height:320px}}
+
+#l3-demo-cards button[aria-pressed="true"]{outline:3px solid #176d65;outline-offset:2px}#l3-demo-cards button{min-width:0}#l3-demo-detail{overflow-wrap:anywhere}

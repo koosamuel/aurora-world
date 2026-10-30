@@ -1,9 +1,11 @@
 import {samplingCloud} from './sampling-connection.js';
 export function initLearned3D(){
  const $=id=>document.getElementById('l3-'+id);
- let source=null,prepared=null,available=false,busy=false,epoch=0,viewer=null,urls=[],unavailableReason='',supportsProjection=false,currentRow=null,projectedViewer=null;
+ let source=null,prepared=null,available=false,busy=false,epoch=0,viewer=null,urls=[],unavailableReason='',supportsProjection=false,currentRow=null,projectedViewer=null,demoSelected=null,briefSource=null,demoRows=[];
  const say=t=>{$('status').textContent=t;};
  function controls(){
+  for(const b of $('demo-cards').querySelectorAll('button'))b.disabled=busy||!available||samplingCloud();
+  $('upload-mode').disabled=busy||samplingCloud();
   $('project').disabled=!supportsProjection||!currentRow||busy||!$('projection-confirmed').checked||samplingCloud();
   $('run').disabled=!available||!source||busy||samplingCloud();
   $('confirm').disabled=!prepared||busy||!$('foreground-confirmed').checked||samplingCloud();
@@ -23,13 +25,14 @@ export function initLearned3D(){
  $('form').addEventListener('submit',async e=>{
   e.preventDefault();if(busy||!source||samplingCloud()||!available)return;const ticket=epoch,s=source;clear();busy=true;controls();say('전경 마스크·미리보기 준비 중… 아직 3D 생성하지 않습니다.');
   try{
+   let row;if(demoSelected){row=await api('demo-runs',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({demo_id:demoSelected.demo_id,source_checksum:demoSelected.checksum,storage_consent:$('store-consent').checked})});}else{
    const file=$('file').files[0];if(!file||!file.size||file.size>2*1024*1024)throw new Error('2MiB 이하 이미지 필요');
    const data=await new Promise((ok,no)=>{const reader=new FileReader();reader.onload=()=>ok(reader.result.split(',')[1]);reader.onerror=()=>no(new Error('파일 읽기 실패'));reader.readAsDataURL(file);});if(ticket!==epoch)return;
-   const row=await api('runs',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image_base64:data,dimensions_mm:s.dimensions_mm,view:'single',source_id:s.id,source_checksum:s.checksum})});
+   row=await api('runs',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image_base64:data,dimensions_mm:s.dimensions_mm,view:'single',source_id:s.id,source_checksum:s.checksum})});}
    if(ticket!==epoch)return;if(row.status!=='prepared'||!/^[0-9a-f]{32}$/.test(row.id))throw new Error('입력 준비 상태 오류');
    for(const m of row.preparation_artifacts){const {url}=await artifact(row.id,m);if(ticket!==epoch)return;if(m.file==='preview.png')$('preview').src=url;if(m.file==='mask.png')$('mask').src=url;}
    if(ticket!==epoch)return;prepared=row;$('preflight-metrics').textContent=`그림의 어두운 픽셀 보존 ${(100*row.preflight.ink_coverage).toFixed(1)}% · 전경 영역 ${(100*row.preflight.foreground_fraction).toFixed(1)}% · 부위 완전성 미검증`;
-   $('preflight').hidden=false;say('미리보기에서 귀·몸통·팔다리 보존을 확인한 뒤 생성 버튼을 누르세요.');
+   $('preflight').hidden=false;say('미리보기에서 선택 동물의 주요 부위 보존을 확인한 뒤 생성 버튼을 누르세요.');
   }catch(e){if(ticket===epoch)say('입력 준비 실패: '+e.message);}finally{busy=false;controls();}
  });
  $('foreground-confirmed').addEventListener('change',controls);
@@ -66,11 +69,29 @@ export function initLearned3D(){
    if(ticket===epoch)say('투영 사본 완료 · 원본 형상 보존 검증됨. 얼굴 위치·번짐은 직접 비교하세요. 뒷면은 무채색이며 AI 텍스처 생성이 아닙니다.');
   }catch(e){if(ticket===epoch)say('투영 실패: '+e.message);}finally{busy=false;controls();}
  });
+ function selectInput(demo){
+  epoch++;demoSelected=demo;source=demo||briefSource;clear();$('store-consent').checked=false;
+  $('file').disabled=!!demo;$('file').required=!demo;$('file').value='';
+  for(const b of $('demo-cards').querySelectorAll('button'))b.setAttribute('aria-pressed',String(b.dataset.demoId===demo?.demo_id));
+  $('source').textContent=demo?'독립 로컬 데모: '+demo.label+' · '+demo.checksum.slice(0,12):source?'연결 명세: '+source.id+' · '+source.checksum.slice(0,12):'직접 업로드는 기존 U21에서 U20 토끼 명세를 선택하세요.';
+  $('demo-detail').textContent=demo?'선택: '+demo.label+' · 고정 설명: '+demo.prompt+' · 치수 180×300×120mm는 기록용 가상값이며 형상에 적용하지 않습니다.':'';
+  say(unavailableReason||(demo?'저장 동의를 체크하고 입력 준비를 누르세요.':'직접 업로드할 토끼 스케치를 선택하세요.'));controls();
+ }
+ $('upload-mode').addEventListener('click',()=>{if(!busy)selectInput(null);});
  $('file').addEventListener('change',()=>{epoch++;clear();});
  window.addEventListener('generation-source-selected',e=>{
-  epoch++;const s=e.detail.source;source=s?.family==='BUNNY'&&s?.data_kind==='synthetic'?s:null;clear();
-  $('source').textContent=source?'연결 명세: '+source.id+' · '+source.checksum.slice(0,12):'기존 U21에서 U20 토끼 명세를 선택하세요.';controls();
+  const s=e.detail.source;briefSource=s?.family==='BUNNY'&&s?.data_kind==='synthetic'?s:null;
+  if(!demoSelected)selectInput(null);
  });
- window.addEventListener('sampling-connection-changed',()=>{epoch++;source=null;clear();say(unavailableReason||'로컬 모드에서 토끼 명세를 다시 선택하세요.');});
- (async()=>{try{const c=await api('capabilities');supportsProjection=c.supports_projection===true;available=c.available===true&&c.requires_confirmation===true;$('engine').textContent=c.engine?c.engine+' · 로컬 전용 · '+(c.engine==='TripoSG-scribble'?'스케치/설명 조건의 무채색 형상 생성':'이미지 기반 컬러 형상 생성'):'로컬 모델 미설정';unavailableReason=available?'':c.available?'서버를 새 버전으로 다시 시작하세요. 입력 확인을 지원하지 않는 서버에서는 생성하지 않습니다.':c.reason||'로컬 모델 설치 필요';say(available?'스케치를 선택하고 입력을 먼저 준비하세요.':unavailableReason);}catch{say('로컬 서버 연결 필요');}controls();})();
+ window.addEventListener('sampling-connection-changed',()=>{briefSource=null;selectInput(null);});
+ async function loadDemos(){
+  const data=await api('demos');demoRows=data.demos||[];
+  for(const d of demoRows){
+   if(!['rabbit','bear','elephant','duck'].includes(d.demo_id)||d.image_url!=='./api/learned3d/demo-images/'+d.demo_id)throw new Error('데모 경로 오류');
+   const b=document.createElement('button');b.type='button';b.className='secondary';b.dataset.demoId=d.demo_id;b.setAttribute('aria-pressed','false');
+   const img=document.createElement('img');img.src=d.image_url;img.alt=d.label+' 데모 스케치';img.style.height='180px';img.style.width='100%';img.style.objectFit='contain';b.append(img,document.createTextNode(d.label));b.addEventListener('click',()=>{if(!busy&&!samplingCloud())selectInput(d);});$('demo-cards').append(b);
+  }
+  $('demos').hidden=!demoRows.length;controls();
+ }
+ (async()=>{try{const c=await api('capabilities');supportsProjection=c.supports_projection===true;available=c.available===true&&c.requires_confirmation===true;$('engine').textContent=c.engine?c.engine+' · 로컬 전용 · '+(c.engine==='TripoSG-scribble'?'스케치/설명 조건의 무채색 형상 생성':'이미지 기반 컬러 형상 생성'):'로컬 모델 미설정';unavailableReason=available?'':c.available?'서버를 새 버전으로 다시 시작하세요. 입력 확인을 지원하지 않는 서버에서는 생성하지 않습니다.':c.reason||'로컬 모델 설치 필요';say(available?'데모 그림 또는 직접 업로드를 선택하고 입력을 준비하세요.':unavailableReason);if(available&&c.supports_demos===true)await loadDemos();}catch{say('로컬 서버 연결 필요');}controls();})();
 }

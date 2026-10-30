@@ -40,7 +40,7 @@ class Learned3DService:
         return dict(c,engine=engine)
     def capabilities(self):
         try:
-            c=self.config();return dict(available=True,engine=c['engine'],local_only=True,requires_confirmation=True,supports_projection=c['engine']=='TripoSG-scribble',texture_generated=False if c['engine']=='TripoSG-scribble' else None)
+            c=self.config();return dict(available=True,engine=c['engine'],local_only=True,requires_confirmation=True,supports_projection=c['engine']=='TripoSG-scribble',supports_demos=c['engine']=='TripoSG-scribble',texture_generated=False if c['engine']=='TripoSG-scribble' else None)
         except (ValueError,KeyError,TypeError):return dict(available=False,reason='로컬 모델 설정/가중치 설치 필요')
     def save(self,d,row):
         p=d/'state.tmp';p.write_text(json.dumps(row,ensure_ascii=False,allow_nan=False));p.replace(d/'state.json')
@@ -48,6 +48,12 @@ class Learned3DService:
         if not re.fullmatch('[0-9a-f]{32}',id):raise ValueError('실행 ID 오류')
         p=self.jobs/id/'state.json';return json.loads(p.read_text()) if p.is_file() else None
     def source(self,req):
+        if str(req.get('source_id','')).startswith('local-demo:'):
+            from .sketch_demos import catalog as demos
+            s=next((x for x in demos(self.root) if x['id']==req['source_id']),None)
+            dims=req.get('dimensions_mm',req.get('requested_dimensions_mm'))
+            if not s or s['checksum']!=req.get('source_checksum') or s['dimensions_mm']!=dims:raise ValueError('데모 원본/해시 변경')
+            return s
         s=next((x for x in catalog(self.root,self.briefs)['sources'] if x['id']==req.get('source_id')),None)
         dims=req.get('dimensions_mm',req.get('requested_dimensions_mm'))
         if not s or s['data_kind']!='synthetic' or s['family']!='BUNNY' or s['checksum']!=req.get('source_checksum') or s['dimensions_mm']!=dims:raise ValueError('토끼 명세/해시/치수를 다시 선택하세요.')
@@ -56,6 +62,8 @@ class Learned3DService:
     def request(self,raw,pool=None):
         """Prepare only. No GPU inference before a separate confirmation request."""
         c=self.config();req,image=decode(raw,views=('single',));s=self.source(req)
+        if s.get('source_kind')=='local_sketch_demo':
+            if c['engine']!='TripoSG-scribble' or hashlib.sha256(image).hexdigest()!=s['image_sha256']:raise ValueError('데모는 고정 원본/TripoSG만 허용')
         from PIL import Image,ImageOps,UnidentifiedImageError
         try:
             with Image.open(io.BytesIO(image)) as im:
@@ -67,7 +75,7 @@ class Learned3DService:
         try:
             if len(list(self.jobs.iterdir()))>=100:raise ValueError('최대100회 저장 한도')
             id=uuid.uuid4().hex;d=self.jobs/id;d.mkdir();safe.save(d/'input.png')
-            row=dict(id=id,status='preparing',engine=c['engine'],source_id=s['id'],source_checksum=s['checksum'],requested_dimensions_mm=s['dimensions_mm'],input_sha256=sha(d/'input.png'),dimensions_verified=False,design_approved=False,manufacturing_verified=False)
+            row=dict(id=id,status='preparing',engine=c['engine'],source_id=s['id'],source_checksum=s['checksum'],requested_dimensions_mm=s['dimensions_mm'],source_kind=s.get('source_kind','u20_brief'),family=s['family'],input_sha256=sha(d/'input.png'),dimensions_verified=False,design_approved=False,manufacturing_verified=False)
             self.save(d,row)
             env=dict(os.environ,PYTHONPATH=str(self.root/'src'),HF_HUB_OFFLINE='1',TRANSFORMERS_OFFLINE='1')
             with (d/'preflight.log').open('w') as log:
@@ -108,6 +116,7 @@ class Learned3DService:
             module='aurora.triposg_worker' if row['engine']=='TripoSG-scribble' else 'aurora.learned3d_worker'
             command=[c['python'],'-m',module,'--root',str(self.root),'--input',str(d/'preview/foreground.png'),'--output',str(d/'output')]
             if row['engine']=='TripoSR':command+=['--resolution','192']
+            else:command+=['--family',row.get('family','BUNNY')]
             with (d/'worker.log').open('w') as log:
                 result=subprocess.run(command,cwd=self.root,env=env,stdin=subprocess.DEVNULL,stdout=log,stderr=subprocess.STDOUT,timeout=1200,check=False)
                 if result.returncode:raise RuntimeError('로컬 모델 실패: 관리자 worker.log 확인')

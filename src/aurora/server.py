@@ -59,7 +59,13 @@ def serve(root, host='127.0.0.1', port=8765, public_input=None, reference_root=N
                 if path.startswith('/api/learned3d/'):
                     if urlparse(self.path).query:raise ValueError('쿼리 거부')
                     if path=='/api/learned3d/capabilities':return self.respond(learned3d.capabilities())
+                    if path=='/api/learned3d/demos':
+                        from .sketch_demos import catalog as demos
+                        return self.respond(dict(demos=demos(root) if learned3d.capabilities().get('supports_demos') else []))
                     bits=path.split('/')
+                    if len(bits)==5 and bits[3]=='demo-images':
+                        from .sketch_demos import image_path
+                        raw=image_path(root,bits[4]).read_bytes();self.send_response(200);self.send_header('Content-Type','image/jpeg');self.send_header('Content-Length',str(len(raw)));self.send_header('Cache-Control','no-store');self.send_header('X-Content-Type-Options','nosniff');self.end_headers();self.wfile.write(raw);return
                     if len(bits)==5 and bits[3]=='runs':
                         row=learned3d.get(bits[4]);return self.respond(row or dict(error='실행 없음'),200 if row else 404)
                     if len(bits)==5 and bits[3]=='projections':
@@ -214,6 +220,11 @@ def serve(root, host='127.0.0.1', port=8765, public_input=None, reference_root=N
                 path=urlparse(self.path).path
                 limit=SKETCH_BYTES if path in ('/api/sketch-fit/runs','/api/learned3d/runs') else FILE_BYTES if path in ('/api/forecast-files/validate','/api/forecast-files/datasets') else SAMPLING_BYTES if path in ('/api/sampling/validate','/api/sampling/briefs') else 128*1024 if path=='/api/sampling-effects/reports' else 65536
                 if not 0<size<=limit:raise ValueError('요청 크기를 확인하세요.')
+                if path=='/api/learned3d/demo-runs':
+                    if urlparse(self.path).query or self.headers.get('Content-Type','').split(';')[0]!='application/json':raise ValueError('데모 경로/형식 오류')
+                    from .sketch_demos import prepare
+                    try:return self.respond(prepare(learned3d,self.rfile.read(size)),201)
+                    except RuntimeError as e:return self.respond(dict(error=str(e)),409)
                 if path.startswith('/api/learned3d/runs/') and path.endswith('/projections'):
                     bits=path.split('/')
                     if len(bits)!=6 or urlparse(self.path).query:raise ValueError('투영 경로 오류')
