@@ -135,9 +135,45 @@ inference timeout and60-second preparation timeout. One active neural 3D request
 executor serializes existing 2D AI and new 3D jobs. Restart marks preparing/queued/running jobs failed while prepared inputs remain inspectable.
 Leaving the page does not cancel the server job. Inputs stay on this Mac; no paid API/cloud upload.
 
+## Optional visible-surface sketch projection (experimental)
+
+Only explicitly confirmed, successful TripoSG runs can produce a separate color derivative.
+The UI keeps the original neutral mesh and downloads intact, with a separate projection viewer,
+confirmation checkbox and immutable projected.glb/projection-report.json downloads.
+No new model, learned texture, fabric material or recovered camera is involved. The CPU adapter
+uses orthographic normalized-bbox mapping, foreground alpha, front-facing normals and a rasterized
+z-buffer (2% depth tolerance); grazing-angle colors fade to neutral. Back/occluded surfaces remain neutral.
+
+Settings are exactly yaw [-45,45] degrees, offset_x/offset_y [-.15,.15] in normalized bbox coordinates,
+and scale [.8,1.2]. Positive offset_y moves sampled markings upward on the mesh. Both XY extents
+are independently normalized: this is an approximate alignment, not perspective camera recovery.
+Default alignment was visibly wrong (face too low); manual offset_y=.10 partly adjusted this example,
+but smearing and design mismatch remain. It is NOT a passing quality candidate.
+
+- Capabilities adds supports_projection:true for TripoSG only. Older servers hide the feature.
+- POST /api/learned3d/runs/{parent_id}/projections: JSON≤64KiB, exactly parent_model_sha256,
+  source_image_sha256 (confirmed foreground), settings, projection_confirmed:true; synchronous bounded
+  CPU operation (60-second subprocess timeout), no shell/arbitrary paths. Returns201 including on reuse.
+- GET /api/learned3d/projections/{id}: stored state/report.
+- GET /api/learned3d/projection-artifacts/{id}/{name}: only successful projected.glb/projection-report.json,
+  checked by size/SHA. Private foreground and worker logs are not served.
+- Parent source brief/current hashes are checked before creation/reuse. Same parent/hash/settings reuses
+  the same successful copy after verifying its artifacts; altered settings get a new UUID. One active
+  CPU projection, maximum200 copies overall/20 per parent. Server restart fails incomplete jobs.
+- Parent files are never overwritten. Export is reloaded and checked for float32 vertices and identical
+  face indices. Geometry SHA and input/parent/adapter hashes are recorded. This is integrity validation,
+  not a shape accuracy or sewing metric. Invalid/superseded inputs cannot silently substitute outputs.
+- Files live under ignored results/sketch-projections/{uuid}/. No automatic remote/U22 handoff.
+
+Reproducible opt-in browser check: tools/verify_projection_ui.mjs. Supply the explicit loopback URL,
+absolute sketch/evidence paths and Playwright module/Chrome paths as shown in its header. This runs
+a REAL new neural inference and CPU projection, so it is not part of model-free CI. Its source file
+contains no local sketch data or credentials. Projection unit tests require numpy/scipy/Pillow/trimesh,
+which CI installs without downloading model weights.
+
 ## Verification and next decision
 
-- Full local Python197 pass, including13 learned3D service/preprocessor tests; JS14 pass;
+- Latest full local Python211 pass, including14 new projection tests and13 learned3D service/preprocessor tests; JS14 pass;
   SQL/RLS105 pass with Auth/Storage doubles (not new live Supabase verification).
 - The expanded13 cover no inference before confirmation, explicit boolean/hash, stale source,
   corrupted prepared input/preview, one-active queue, idempotent confirmation, worker failure without
@@ -150,8 +186,14 @@ Leaving the page does not cancel the server job. Inputs stay on this Mac; no pai
   It is not a stored-result replay. The earlier replay test belongs only to initial TripoSR rounds.
 - Actual evaluated outputs and immutable copies are in project processed data
   `04_데이터/가공/2026-10-30_스케치3D_개선/`. Existing production DB/U22 approvals were not changed.
+- Follow-up actual browser check: one NEW TripoSG inference (~22.78s model portion), then REAL CPU
+  projection (~1.63s), explicit confirmation, false/stale/range400 and foreign-origin403, immutable parent
+  SHA, hash-checked projected files, idempotent reuse, private-log denial, source-switch reset and390px
+  with no page errors/overflow. Earlier CPU prototypes2 + integrated1 are3 projections, not3 models.
+  Stored actual evidence is project processed data 2026-10-30_스케치3D_원화투영/.
 - Current code/test work does not verify a GitHub Actions/Pages deployment or Supabase model route.
 
 Next: compare more held-out sketches and front/side references; define acceptable ear/foot details and
-artist correction burden; evaluate a separately licensed texture/facial-marking approach. Only after
+artist correction burden; improve facial/camera alignment and line smearing before considering
+projection acceptance. Evaluate a separately licensed learned texture/backside approach if needed. Only after
 explicit quality acceptance consider U22/remote integration, and keep scale/material/sewing validation separate.

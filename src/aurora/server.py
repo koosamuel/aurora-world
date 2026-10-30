@@ -32,6 +32,8 @@ def serve(root, host='127.0.0.1', port=8765, public_input=None, reference_root=N
     sketch_fit=SketchFitService(root,sampling)
     from .learned3d import Learned3DService
     learned3d=Learned3DService(root,sampling)
+    from .projections import ProjectionService
+    projections=ProjectionService(root,learned3d)
     pool=ThreadPoolExecutor(max_workers=2)
     gpu_pool=ThreadPoolExecutor(max_workers=1)
     if public_input is None:public_input=root.parent/'04_데이터/가공/2026-10-26_UCI_Online_Retail_II/weekly.json'
@@ -60,8 +62,10 @@ def serve(root, host='127.0.0.1', port=8765, public_input=None, reference_root=N
                     bits=path.split('/')
                     if len(bits)==5 and bits[3]=='runs':
                         row=learned3d.get(bits[4]);return self.respond(row or dict(error='실행 없음'),200 if row else 404)
-                    if len(bits)==6 and bits[3]=='artifacts':
-                        p=learned3d.artifact(bits[4],bits[5])
+                    if len(bits)==5 and bits[3]=='projections':
+                        row=projections.get(bits[4]);return self.respond(row or dict(error='투영 없음'),200 if row else 404)
+                    if len(bits)==6 and bits[3] in ('artifacts','projection-artifacts'):
+                        p=(projections if bits[3]=='projection-artifacts' else learned3d).artifact(bits[4],bits[5])
                         if not p:return self.respond(dict(error='파일 없음'),404)
                         raw=p.read_bytes();self.send_response(200);self.send_header('Content-Type', 'model/gltf-binary' if p.suffix=='.glb' else 'image/png' if p.suffix=='.png' else 'application/json');self.send_header('Content-Length',str(len(raw)));self.send_header('Cache-Control','no-store');self.send_header('X-Content-Type-Options','nosniff');self.end_headers();self.wfile.write(raw);return
                     raise ValueError('경로 오류')
@@ -210,6 +214,12 @@ def serve(root, host='127.0.0.1', port=8765, public_input=None, reference_root=N
                 path=urlparse(self.path).path
                 limit=SKETCH_BYTES if path in ('/api/sketch-fit/runs','/api/learned3d/runs') else FILE_BYTES if path in ('/api/forecast-files/validate','/api/forecast-files/datasets') else SAMPLING_BYTES if path in ('/api/sampling/validate','/api/sampling/briefs') else 128*1024 if path=='/api/sampling-effects/reports' else 65536
                 if not 0<size<=limit:raise ValueError('요청 크기를 확인하세요.')
+                if path.startswith('/api/learned3d/runs/') and path.endswith('/projections'):
+                    bits=path.split('/')
+                    if len(bits)!=6 or urlparse(self.path).query:raise ValueError('투영 경로 오류')
+                    if self.headers.get('Content-Type','').split(';')[0]!='application/json':raise ValueError('application/json 필요')
+                    try:return self.respond(projections.create(bits[4],self.rfile.read(size)),201)
+                    except RuntimeError as e:return self.respond(dict(error=str(e)),409)
                 if path.startswith('/api/learned3d/runs/') and path.endswith('/confirm'):
                     bits=path.split('/')
                     if len(bits)!=6 or urlparse(self.path).query:raise ValueError('확인 경로 오류')

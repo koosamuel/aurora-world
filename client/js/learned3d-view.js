@@ -1,20 +1,21 @@
 import {samplingCloud} from './sampling-connection.js';
 export function initLearned3D(){
  const $=id=>document.getElementById('l3-'+id);
- let source=null,prepared=null,available=false,busy=false,epoch=0,viewer=null,urls=[],unavailableReason='';
+ let source=null,prepared=null,available=false,busy=false,epoch=0,viewer=null,urls=[],unavailableReason='',supportsProjection=false,currentRow=null,projectedViewer=null;
  const say=t=>{$('status').textContent=t;};
  function controls(){
+  $('project').disabled=!supportsProjection||!currentRow||busy||!$('projection-confirmed').checked||samplingCloud();
   $('run').disabled=!available||!source||busy||samplingCloud();
   $('confirm').disabled=!prepared||busy||!$('foreground-confirmed').checked||samplingCloud();
  }
- function clear(){prepared=null;$('preflight').hidden=true;$('result').hidden=true;$('foreground-confirmed').checked=false;for(const u of urls)URL.revokeObjectURL(u);urls=[];viewer?.clear();controls();}
+ function clear(){currentRow=null;$('projection').hidden=true;$('projected-result').hidden=true;$('projection-confirmed').checked=false;projectedViewer?.clear();prepared=null;$('preflight').hidden=true;$('result').hidden=true;$('foreground-confirmed').checked=false;for(const u of urls)URL.revokeObjectURL(u);urls=[];viewer?.clear();controls();}
  async function api(path,opts={}){
   const r=await fetch('./api/learned3d/'+path,{...opts,signal:AbortSignal.timeout(90000)});
   const d=await r.json();if(!r.ok)throw new Error(d.error||'HTTP '+r.status);return d;
  }
- async function artifact(id,m){
-  if(!['preview.png','mask.png','preflight.json','condition.png','model.glb','report.json'].includes(m.file))throw new Error('산출물 이름 오류');
-  const r=await fetch('./api/learned3d/artifacts/'+id+'/'+m.file,{signal:AbortSignal.timeout(30000)});if(!r.ok)throw new Error('산출물 조회 오류');
+ async function artifact(id,m,projection=false){
+  if(!['preview.png','mask.png','preflight.json','condition.png','model.glb','report.json','projected.glb','projection-report.json'].includes(m.file))throw new Error('산출물 이름 오류');
+  const r=await fetch('./api/learned3d/'+(projection?'projection-artifacts/':'artifacts/')+id+'/'+m.file,{signal:AbortSignal.timeout(30000)});if(!r.ok)throw new Error('산출물 조회 오류');
   const bytes=await r.arrayBuffer();const hash=[...new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))].map(x=>x.toString(16).padStart(2,'0')).join('');
   if(bytes.byteLength!==m.bytes||hash!==m.sha256)throw new Error('산출물 무결성 오류');
   const url=URL.createObjectURL(new Blob([bytes],{type:m.file.endsWith('.glb')?'model/gltf-binary':m.file.endsWith('.png')?'image/png':'application/json'}));urls.push(url);return {bytes,url};
@@ -45,8 +46,25 @@ export function initLearned3D(){
    for(const m of row.artifacts){const {bytes,url}=await artifact(row.id,m);if(ticket!==epoch)return;const a=document.createElement('a');a.href=url;a.download=m.file;a.textContent=m.file;a.className='secondary';a.style.marginRight='16px';$('downloads').append(a);if(m.file==='condition.png')$('condition').src=url;if(m.file==='model.glb')glb=bytes;}
    $('preflight').hidden=true;$('result').hidden=false;$('report').textContent=JSON.stringify(row,null,2);
    if(!viewer){const {createSampleViewer}=await import('../vendor/sample-viewer.js');viewer=createSampleViewer($('viewer'));}viewer.clear();await viewer.load(glb);if(ticket!==epoch)return;
+   currentRow=row;$('projection').hidden=!supportsProjection;controls();
    say(row.engine+' 생성 완료 · 형상/뒷면과 디자인 일치를 검토하세요. 무채색 표시는 텍스처 생성·제작 승인이 아닙니다.');
   }catch(e){if(ticket===epoch)say('생성/표시 실패: '+e.message);}finally{busy=false;controls();}
+ });
+ $('projection-confirmed').addEventListener('change',controls);
+ $('project').addEventListener('click',async()=>{
+  if(busy||!currentRow||!supportsProjection||!$('projection-confirmed').checked||samplingCloud())return;
+  const ticket=epoch,parent=currentRow;busy=true;controls();say('원본을 보존하며 별도 투영 사본을 만드는 중…');
+  try{
+   const options=Object.fromEntries(['yaw','offset_x','offset_y','scale'].map(k=>[k,Number($('projection-'+k).value)]));
+   const row=await api('runs/'+parent.id+'/projections',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({parent_model_sha256:parent.artifacts.find(x=>x.file==='model.glb').sha256,source_image_sha256:parent.foreground_sha256,settings:options,projection_confirmed:true})});
+   if(ticket!==epoch)return;if(row.status!=='succeeded')throw new Error('투영 사본 생성 실패');
+   $('projection-downloads').replaceChildren();let glb;
+   for(const m of row.artifacts){const {bytes,url}=await artifact(row.id,m,true);if(ticket!==epoch)return;const a=document.createElement('a');a.href=url;a.download=m.file;a.textContent=m.file;a.style.marginRight='16px';$('projection-downloads').append(a);if(m.file==='projected.glb')glb=bytes;}
+   $('projected-result').hidden=false;$('projection-report').textContent=JSON.stringify(row,null,2);
+   if(!projectedViewer){const {createSampleViewer}=await import('../vendor/sample-viewer.js');projectedViewer=createSampleViewer($('projected-viewer'));}
+   if(ticket!==epoch)return;projectedViewer.clear();await projectedViewer.load(glb);
+   if(ticket===epoch)say('투영 사본 완료 · 원본 형상 보존 검증됨. 얼굴 위치·번짐은 직접 비교하세요. 뒷면은 무채색이며 AI 텍스처 생성이 아닙니다.');
+  }catch(e){if(ticket===epoch)say('투영 실패: '+e.message);}finally{busy=false;controls();}
  });
  $('file').addEventListener('change',()=>{epoch++;clear();});
  window.addEventListener('generation-source-selected',e=>{
@@ -54,5 +72,5 @@ export function initLearned3D(){
   $('source').textContent=source?'연결 명세: '+source.id+' · '+source.checksum.slice(0,12):'기존 U21에서 U20 토끼 명세를 선택하세요.';controls();
  });
  window.addEventListener('sampling-connection-changed',()=>{epoch++;source=null;clear();say(unavailableReason||'로컬 모드에서 토끼 명세를 다시 선택하세요.');});
- (async()=>{try{const c=await api('capabilities');available=c.available===true&&c.requires_confirmation===true;$('engine').textContent=c.engine?c.engine+' · 로컬 전용 · '+(c.engine==='TripoSG-scribble'?'스케치/설명 조건의 무채색 형상 생성':'이미지 기반 컬러 형상 생성'):'로컬 모델 미설정';unavailableReason=available?'':c.available?'서버를 새 버전으로 다시 시작하세요. 입력 확인을 지원하지 않는 서버에서는 생성하지 않습니다.':c.reason||'로컬 모델 설치 필요';say(available?'스케치를 선택하고 입력을 먼저 준비하세요.':unavailableReason);}catch{say('로컬 서버 연결 필요');}controls();})();
+ (async()=>{try{const c=await api('capabilities');supportsProjection=c.supports_projection===true;available=c.available===true&&c.requires_confirmation===true;$('engine').textContent=c.engine?c.engine+' · 로컬 전용 · '+(c.engine==='TripoSG-scribble'?'스케치/설명 조건의 무채색 형상 생성':'이미지 기반 컬러 형상 생성'):'로컬 모델 미설정';unavailableReason=available?'':c.available?'서버를 새 버전으로 다시 시작하세요. 입력 확인을 지원하지 않는 서버에서는 생성하지 않습니다.':c.reason||'로컬 모델 설치 필요';say(available?'스케치를 선택하고 입력을 먼저 준비하세요.':unavailableReason);}catch{say('로컬 서버 연결 필요');}controls();})();
 }
