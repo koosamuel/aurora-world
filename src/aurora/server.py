@@ -29,7 +29,7 @@ def serve(root, host='127.0.0.1', port=8765, public_input=None, reference_root=N
     from .inputs import MAX_BYTES as FILE_BYTES
     weekly=ForecastFiles(root,reviews)
     from .sketch_fit import SketchFitService, MAX_BODY as SKETCH_BYTES
-    sketch_fit=SketchFitService(root)
+    sketch_fit=SketchFitService(root,sampling)
     pool=ThreadPoolExecutor(max_workers=2)
     if public_input is None:public_input=root.parent/'04_데이터/가공/2026-10-26_UCI_Online_Retail_II/weekly.json'
     from .public_jobs import PublicStore

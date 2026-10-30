@@ -7,7 +7,7 @@ python3 -m pip install -e '.[data]'
 PYTHONPATH=src python3 -m aurora serve --port 8765
 ```
 
-`http://127.0.0.1:8765/sketch-fit.html` 또는 기존 디지털 샘플링 탭의 ‘스케치 업로드 · 보정 전후 비교’를 연다. Pillow가 없으면 기능을 비활성화하고 설치 안내를 표시한다. 기존 기하 생성 경로는 그대로 유지한다.
+기존 메인 화면 `http://127.0.0.1:8765/index.html#/labeling`의 U21 입력에서 U20 토끼 명세를 선택하고, 같은 화면의 ‘U21 · 스케치 기반 정면 윤곽 보정’을 이용한다. 치수는 선택 명세에서 읽어 오며 서버가 명세 버전·해시·치수 일치를 검증한다. 다른 상품군·Supabase 모드에서는 실행을 막는다. `/sketch-fit.html`은 명세 연결 없는 수동 실험용 호환 경로로 유지한다. Pillow가 없으면 기능을 비활성화하고 설치 안내를 표시한다. 기존 기하 생성 경로는 그대로 유지한다.
 
 - 입력: 밝은 배경의 어두운 **닫힌 정면 토끼 윤곽**, PNG/JPEG, 2MiB 이하·8백만 픽셀 이하·가로세로 32px 이상. EXIF 방향·투명 배경을 처리한다.
 - 목표 너비/높이/깊이: 각 10~2000mm. 깊이와 실측 치수는 이미지에서 복원하지 않으며 사용자 가정이다.
@@ -28,7 +28,7 @@ PYTHONPATH=src python3 -m aurora serve --port 8765
 
 ## 검증 결과 (2026-10-30)
 
-- 신규 단위 테스트 6개: 요청 엄격성·빈 입력/잘못된 형식·윤곽 채움/투명 배경·비감소/재현/치수·파일 무결성/재시작/경로 제한·동시 실행 제한.
+- 신규 단위 테스트 7개: 요청 엄격성·빈 입력/잘못된 형식·윤곽 채움/투명 배경·비감소/재현/치수·파일 무결성/재시작/경로 제한·동시 실행 제한·연결 명세 검증.
 - 기존 U21 생성 회귀 테스트 10개 통과.
 - Chrome 헤드리스: 합성 정면 토끼 업로드 → IoU **0.860 → 0.962**, 전후 WebGL GLB 표시, 다운로드 6개, JavaScript 예외 없음.
 - 실제 HTTP에서 잘못된 입력 400·교차 출처 POST 403 확인.
@@ -41,3 +41,7 @@ Sketch2Mesh의 ‘투영 윤곽에 맞춰 형상을 보정’하는 아이디어
 모든 형상을 사용자 치수로 재정규화하므로 치수 일치는 입력을 따랐다는 뜻이지 실측 정확도가 아니다. 부위가 겹치는 외피이며 watertight 메시·봉제 패턴·시접·충전 물성·BOM·제작 승인은 미지원이다. 보고서의 `design_approved`·`manufacturing_verified`는 false다.
 
 참고: Guillard et al., [Sketch2Mesh (ICCV 2021)](https://arxiv.org/abs/2104.00482), Zhang et al., [Sketch2Model (CVPR 2021)](https://openaccess.thecvf.com/content/CVPR2021/html/Zhang_Sketch2Model_View-Aware_3D_Modeling_From_Single_Free-Hand_Sketches_CVPR_2021_paper.html).
+
+## 기존 U21 통합 검증
+
+2026-10-30: 메인 앱에서 `u20:SYN-BUNNY:2` 선택 → 명세 치수 자동 반영 → 동일 화면에서 업로드·보정·3D 비교 확인. 합성 입력 IoU 0.797→0.925, JS 예외 없음. 오래된 명세 해시는 HTTP 400, 다른 상품군 선택 시 버튼 비활성화 확인. 기존 U22 승인·U23 패턴/BOM 흐름에 실험 결과를 자동 등록·승인하지 않는다.

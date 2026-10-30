@@ -47,6 +47,16 @@ class SketchFitTests(unittest.TestCase):
                 with self.assertRaises(ValueError):s.artifact(run,name)
             p.write_bytes(b'corrupt')
             with self.assertRaises(ValueError):s.artifact(row['id'],'after.glb')
+    def test_linked_brief_hash_and_dimensions(self):
+        from unittest.mock import patch
+        source=dict(id='u20:SYN-BUNNY:2',family='BUNNY',checksum='a'*64,brief_checksum='b'*64,dimensions_mm=DIMS)
+        req=json.loads(request());req.update(source_id=source['id'],source_checksum=source['checksum'])
+        with tempfile.TemporaryDirectory() as tmp, patch('aurora.generation.catalog',return_value={'sources':[source]}):
+            service=SketchFitService(tmp,briefs=object());row=service.run(json.dumps(req).encode())
+            self.assertEqual(row['source_ref']['id'],source['id'])
+            for changes in [dict(source_checksum='c'*64),dict(source_id='u20:SYN-CAT:2'),dict(dimensions_mm=DIMS|{'width':200})]:
+                with self.assertRaises(ValueError):service.run(json.dumps(req|changes).encode())
+
     def test_concurrency_guard(self):
         with tempfile.TemporaryDirectory() as tmp:
             s=SketchFitService(tmp);s.lock.acquire()

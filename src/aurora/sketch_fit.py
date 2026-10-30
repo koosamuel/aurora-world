@@ -27,7 +27,9 @@ def decode(raw):
     def bad(_): raise ValueError('비유한 수치')
     try: req = json.loads(raw, object_pairs_hook=pairs, parse_constant=bad)
     except RecursionError as exc: raise ValueError('JSON 중첩이 너무 깊습니다.') from exc
-    if not isinstance(req, dict) or set(req) != {'image_base64', 'dimensions_mm', 'view'}: raise ValueError('이미지·dimensions_mm·view만 허용')
+    required = {'image_base64', 'dimensions_mm', 'view'}
+    if not isinstance(req, dict) or set(req) not in (required, required | {'source_id','source_checksum'}): raise ValueError('요청 필드 오류')
+    if 'source_id' in req and (not isinstance(req['source_id'],str) or len(req['source_id'])>100 or not isinstance(req['source_checksum'],str) or not re.fullmatch('[0-9a-f]{64}',req['source_checksum'])): raise ValueError('명세 참조 형식 오류')
     if req['view'] != 'front': raise ValueError('정면만 지원')
     dims = req['dimensions_mm']
     if not isinstance(dims, dict) or set(dims) != {'width', 'height', 'depth'}: raise ValueError('세 치수 필요')
@@ -87,12 +89,18 @@ def input_mask(raw):
 
 def model(params, dims):
     parts = procedural({'family':'BUNNY','dimensions_mm':dims}, 42, True)
+    head = next(p for p in parts if p['name']=='head')
+    head_lo,head_hi = bounds([head]); head_center = [(a+b)/2 for a,b in zip(head_lo,head_hi)]
     for p in parts:
         vs = p['vertices']; lo, hi = bounds([p]); c = [(a+b)/2 for a,b in zip(lo,hi)]
         name = p['name']
         sx = params['body_width'] if name == 'body' else params['head_width'] if name in ('head','eye') else 1
         sy = params['head_height'] if name == 'head' else params['ear_length'] if name in ('ear','inner-ear') else 1
         for v in vs:
+            if name == 'eye':
+                v[0] = head_center[0] + (v[0]-head_center[0])*params['head_width']
+                v[1] = head_center[1] + (v[1]-head_center[1])*params['head_height']
+                continue
             v[0] = c[0] + (v[0]-c[0])*sx
             v[1] = c[1] + (v[1]-c[1])*sy
             if name in ('ear','inner-ear'): v[0] *= params['ear_spacing']
@@ -128,10 +136,19 @@ def optimize(target, dims):
     return before,model(params,dims),dict(before_iou=initial,after_iou=score,history=history,evaluations=evaluations,parameters=params)
 
 class SketchFitService:
-    def __init__(self,root):
+    def __init__(self,root,briefs=None):
+        self.project_root=Path(root); self.briefs=briefs
         self.root = Path(root)/'results/sketch-fit'; self.lock = threading.Lock()
     def run(self,raw):
         req,image = decode(raw)
+        source_ref = None
+        if 'source_id' in req:
+            from .generation import catalog
+            if self.briefs is None: raise ValueError('명세 저장소 미연결')
+            source = next((x for x in catalog(self.project_root,self.briefs)['sources'] if x['id']==req['source_id']),None)
+            if not source or source['family']!='BUNNY' or source['checksum']!=req['source_checksum']: raise ValueError('토끼 명세 또는 해시가 변경되었습니다. 다시 선택하세요.')
+            if source['dimensions_mm']!=req['dimensions_mm']: raise ValueError('연결된 명세의 치수와 다릅니다.')
+            source_ref = dict(id=source['id'],checksum=source['checksum'],brief_checksum=source['brief_checksum'])
         if not self.lock.acquire(blocking=False): raise RuntimeError('다른 윤곽 보정이 실행 중입니다. 잠시 후 다시 시도하세요.')
         try:
             target = input_mask(image)
@@ -142,7 +159,7 @@ class SketchFitService:
             files = {'before.glb':make_glb(before),'after.glb':make_glb(after),'input.bin':image}
             for name,im in [('target.png',target),('before.png',silhouette(before)),('after.png',silhouette(after))]:
                 buf = io.BytesIO(); im.save(buf,format='PNG'); files[name] = buf.getvalue()
-            report = dict(id=run_id,method='bunny-front-silhouette-fit-v1',scope=SCOPE,dimensions_mm=req['dimensions_mm'],depth_source='user_assumption_not_reconstructed',input_sha256=hashlib.sha256(image).hexdigest(),engine_sha256=hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),metrics=metrics,manufacturing_verified=False,design_approved=False,warnings=['단일 정면·직교 투영 및 밝은 배경의 닫힌 외곽선 가정','목표 마스크를 먼저 확인하세요. 사진 배경·글씨·열린 선은 오분할될 수 있습니다.','IoU는 정규화된 2D 실루엣 겹침이지 실제 치수 정확도·3D 정답·봉제 적합성이 아닙니다.','깊이는 사용자 가정값이며 원화에서 복원하지 않습니다.'])
+            report = dict(id=run_id,method='bunny-front-silhouette-fit-v1',source_ref=source_ref,scope=SCOPE,dimensions_mm=req['dimensions_mm'],depth_source='user_assumption_not_reconstructed',input_sha256=hashlib.sha256(image).hexdigest(),engine_sha256=hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),metrics=metrics,manufacturing_verified=False,design_approved=False,warnings=['단일 정면·직교 투영 및 밝은 배경의 닫힌 외곽선 가정','목표 마스크를 먼저 확인하세요. 사진 배경·글씨·열린 선은 오분할될 수 있습니다.','IoU는 정규화된 2D 실루엣 겹침이지 실제 치수 정확도·3D 정답·봉제 적합성이 아닙니다.','깊이는 사용자 가정값이며 원화에서 복원하지 않습니다.'])
             files['report.json'] = json.dumps(report,ensure_ascii=False,allow_nan=False,indent=2).encode()
             for name,data in files.items(): (dest/name).write_bytes(data)
             report['artifacts'] = [dict(file=k,bytes=len(v),sha256=hashlib.sha256(v).hexdigest()) for k,v in files.items() if k!='input.bin']

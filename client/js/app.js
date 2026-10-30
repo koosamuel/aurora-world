@@ -1,3 +1,4 @@
+import {initSketchFit} from './sketch-fit-view.js';
 import {setSamplingConnection,initSamplingQueue} from './sampling-connection.js';
 import {initForecastFiles,renderForecastFiles} from './forecast-file-view.js';
 import {initSamplingEffects} from './sampling-effect-view.js';
@@ -130,6 +131,7 @@ initForecastFiles();
 initLabeling();
 initIdentity();
 initSampling();
+initSketchFit();
 initGeneration();
 initAISampling();
 initSampleReviews();
