@@ -169,6 +169,97 @@ keeps the short snout visible in the drawing instead of claiming verified elepha
   path/unknown IDs, legacy-engine denial, stale confirmation and unchanged U20 family restriction.
   tools/verify_sketch_demos.mjs is an opt-in REAL four-inference browser check with private evidence.
 
+## Facial geometry copies + studio rendering
+
+### Use the existing result without rerunning the model
+
+1. Open `http://127.0.0.1:8765/#/labeling`, then **저장된 실제 생성 결과 다시 열기**.
+   Select a completed model and click **결과 열기**. This does not invoke neural inference.
+2. Under **얼굴 형태 편집 사본**, inspect the original and its input image. Defaults are approximate
+   family presets, NOT detected landmarks or validated design. Use **3D에서 선택** to click each
+   landmark on the original surface; numeric normalized XYZ, eye spacing/size/depth, nose shape/size
+   and mouth curve endpoints/control point/radius remain editable.
+3. Explicitly confirm the assumptions, then **얼굴 포함 GLB 사본 만들기**. Download `face.glb` and
+   `face-report.json`. The original neutral GLB remains above. Existing projection markings are NOT
+   combined with the accessories, avoiding duplicate eyes/noses from a projected sketch.
+4. Use **기본 검토 / 스튜디오**, front/side/back/reset, matte display, low quality, optional turntable.
+   Basic review restores original materials; matte clones materials and never rewrites the GLB.
+   Studio uses key/fill/rim/hemisphere lights, neutral background, local PCF ground shadows and ACES
+   exposure. There is no external HDRI/CDN or new model download. Low quality disables shadows/floor
+   and caps pixel ratio1. Automatic rotation is off by default and stops when the model is cleared.
+5. **PNG 저장** saves the actual WebGL canvas, not an AI-enhanced image. **표시 설정 JSON** saves the
+   last capture's model SHA/camera/mode/lights/material/quality/canvas parameters AND PNG SHA-256,
+   even if you subsequently change the view. Without a capture it saves the current settings only.
+6. Use the saved facial-copy dropdown to reopen a version and its parameters, including after reload.
+   Reopening does not regenerate. Changing source/connection clears visible copies and confirmation.
+
+### Facial model contract
+
+The original body is retained as `original_body`; separate geometry nodes `face_eye_left`,
+`face_eye_right`, `face_nose`, `face_mouth` are added where enabled. Eyes are flattened ellipsoids;
+noses round or triangular; mouths are small tubes following a surface-projected quadratic curve.
+Preset anchors use front-ray intersections; manual anchors snap to the nearest triangle surface.
+UI initialization also projects preset points to the real surface before individual manual edits.
+Stitch style means shallow accessory geometry, NOT UV embroidery/fabric texture reconstruction.
+
+BUNNY/BEAR default to eyes/nose/mouth. ELEPHANT preserves the existing muzzle/trunk by default
+(eyes only; nose/mouth may be manually enabled). DUCK keeps the existing bill and accepts eyes only.
+The earlier elephant preset with a second nose/mouth was visually inappropriate and was rejected.
+Presets can still mismatch orientation/design, and invisible features remain guesses. Human visual
+acceptance and automatic source-image landmark extraction are NOT completed by this feature.
+
+The saved GLB is reloaded: original-body float32 vertices/face indices must match and named facial
+parts must exist. The parent's FILE SHA must remain unchanged. The complete derivative has changed
+geometry: report `original_body_preserved:true`, `geometry_preserved:false`,
+`download_contains_face:true`, `single_fused_mesh:false`. Accessories intentionally overlap the body
+for attachment and are not a fused watertight sewing/manufacturing mesh. No scale/sewing/BOM approval.
+
+### Local API reference
+
+- `GET /api/learned3d/runs`: recent saved successful model summaries (up to30 from recent jobs).
+- `GET /api/learned3d/face-presets`: four illustrative landmark/parameter presets, not model inference.
+- `POST /api/learned3d/runs/{parent_id}/faces` →201 (also on idempotent reuse).
+- `GET /api/learned3d/runs/{parent_id}/faces`: up to20 saved successful derivatives for that parent.
+- `GET /api/learned3d/faces/{id}`: stored status/settings/report.
+- `GET /api/learned3d/face-artifacts/{id}/{name}`: successful `face.glb` / `face-report.json` only;
+  private logs/input paths are not served. Client checks byte size/SHA before display/download.
+
+The POST accepts exactly these JSON fields (≤64KiB):
+
+| Field | Contract |
+|---|---|
+| parent_model_sha256 |64 lowercase hex, must match confirmed successful TripoSG model|
+| source_image_sha256 |64 lowercase hex, must match the parent's prepared foreground|
+| face_confirmed |boolean true, never numeric1|
+| anchor_origin |preset or manual; not a claim of automatic landmark extraction|
+| anchors |exactly eye_left, eye_right, nose, mouth_left, mouth_center, mouth_right; each a3-number array in[0,1] normalized body-bounds XYZ|
+| settings |exactly eye_size[.005,.07], eye_depth[.05,.8], nose_size[.005,.09], mouth_radius[.001,.012], nose_shape round/triangle, style button/stitch, boolean eyes_enabled/nose_enabled/mouth_enabled; at least one enabled|
+
+Sizes are fractions of the largest mesh dimension, NOT validated millimeters. Parent source/brief
+and files are rechecked. No arbitrary paths, URLs, prompts or shell fragments are accepted.
+Same parent/request/algorithm SHA reuses a successful copy after artifact checks; edits/new algorithm
+produce new immutable UUIDs. One active CPU face task,60-second subprocess timeout,≤200 copies
+in total/20 per parent,≤200k body faces. Failed/incomplete files are hidden; restart fails unfinished jobs.
+Loopback Host/same-origin POST guards are unchanged. Files are under ignored `results/face-edits/`.
+This does not introduce Supabase execution, U22 approval or remote storage.
+
+### Actual verification and remaining quality work
+
+Model-free facial tests cover strict anchors/settings/confirmation, preserved parent/file + added nodes
+in reloaded GLB, duck exceptions, stale/mutated inputs, artifact corruption, immutable reuse/limits,
+worker failure/timeout/restart and parent-scoped history. Opt-in `tools/verify_face_studio.mjs` uses
+REAL existing neural meshes, REAL CPU edits and Chrome WebGL—no mock facial outputs or new neural
+inference. It verifies four families, raycast manual selection (rabbit), history/reload, actual mode/
+turntable/quality buttons, PNG+metadata hash binding, source reset,390px and released model geometry.
+It records12-frame RAF-paced review/studio observations and renderer geometry/texture COUNTS;
+these are short headless tests, not GPU-only timing, byte-level memory usage or mobile FPS promises.
+
+The initial browser checks exposed landmark-pick scrolling and a late U20 initialization clearing a
+saved result; both were fixed. The comparison harness now explicitly resets low-quality state per
+model. Final evidence is project processed data `2026-10-30_얼굴형태_스튜디오검증/`.
+Further work: artist acceptance of landmark/shape/expression match, asymmetric/hidden-side reasoning,
+actual UV/color/fabric PBR generation, cross-device sustained performance and sewing/scale validation.
+
 ## Optional visible-surface sketch projection (experimental)
 
 Only explicitly confirmed, successful TripoSG runs can produce a separate color derivative.
@@ -207,7 +298,7 @@ which CI installs without downloading model weights.
 
 ## Verification and next decision
 
-- Latest full local Python219 pass, including8 demo tests and14 projection tests and13 learned3D service/preprocessor tests; JS14 pass;
+- Latest full local Python233 pass, including14 facial tests,8 demo tests and14 projection tests and13 learned3D service/preprocessor tests; JS14 pass;
   SQL/RLS105 pass with Auth/Storage doubles (not new live Supabase verification).
 - The expanded13 cover no inference before confirmation, explicit boolean/hash, stale source,
   corrupted prepared input/preview, one-active queue, idempotent confirmation, worker failure without

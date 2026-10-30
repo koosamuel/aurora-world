@@ -40,7 +40,7 @@ class Learned3DService:
         return dict(c,engine=engine)
     def capabilities(self):
         try:
-            c=self.config();return dict(available=True,engine=c['engine'],local_only=True,requires_confirmation=True,supports_projection=c['engine']=='TripoSG-scribble',supports_demos=c['engine']=='TripoSG-scribble',texture_generated=False if c['engine']=='TripoSG-scribble' else None)
+            c=self.config();return dict(available=True,engine=c['engine'],local_only=True,requires_confirmation=True,supports_projection=c['engine']=='TripoSG-scribble',supports_demos=c['engine']=='TripoSG-scribble',supports_faces=c['engine']=='TripoSG-scribble',texture_generated=False if c['engine']=='TripoSG-scribble' else None)
         except (ValueError,KeyError,TypeError):return dict(available=False,reason='로컬 모델 설정/가중치 설치 필요')
     def save(self,d,row):
         p=d/'state.tmp';p.write_text(json.dumps(row,ensure_ascii=False,allow_nan=False));p.replace(d/'state.json')

@@ -34,6 +34,8 @@ def serve(root, host='127.0.0.1', port=8765, public_input=None, reference_root=N
     learned3d=Learned3DService(root,sampling)
     from .projections import ProjectionService
     projections=ProjectionService(root,learned3d)
+    from .faces import FaceService
+    faces=FaceService(root,learned3d)
     pool=ThreadPoolExecutor(max_workers=2)
     gpu_pool=ThreadPoolExecutor(max_workers=1)
     if public_input is None:public_input=root.parent/'04_데이터/가공/2026-10-26_UCI_Online_Retail_II/weekly.json'
@@ -62,7 +64,16 @@ def serve(root, host='127.0.0.1', port=8765, public_input=None, reference_root=N
                     if path=='/api/learned3d/demos':
                         from .sketch_demos import catalog as demos
                         return self.respond(dict(demos=demos(root) if learned3d.capabilities().get('supports_demos') else []))
+                    if path=='/api/learned3d/face-presets':
+                        from .face_edit import presets
+                        return self.respond(presets())
+                    if path=='/api/learned3d/runs':
+                        rows=[learned3d.get(p.parent.name) for p in sorted(learned3d.jobs.glob('*/state.json'),key=lambda p:p.stat().st_mtime,reverse=True)[:30]]
+                        return self.respond(dict(runs=[{k:r.get(k) for k in ('id','family','status','source_id','engine')} for r in rows if r and r['status']=='succeeded']))
                     bits=path.split('/')
+                    if len(bits)==6 and bits[3]=='runs' and bits[5]=='faces':return self.respond(dict(faces=faces.list(bits[4])))
+                    if len(bits)==5 and bits[3]=='faces':
+                        row=faces.get(bits[4]);return self.respond(row or dict(error='얼굴 사본 없음'),200 if row else 404)
                     if len(bits)==5 and bits[3]=='demo-images':
                         from .sketch_demos import image_path
                         raw=image_path(root,bits[4]).read_bytes();self.send_response(200);self.send_header('Content-Type','image/jpeg');self.send_header('Content-Length',str(len(raw)));self.send_header('Cache-Control','no-store');self.send_header('X-Content-Type-Options','nosniff');self.end_headers();self.wfile.write(raw);return
@@ -70,8 +81,8 @@ def serve(root, host='127.0.0.1', port=8765, public_input=None, reference_root=N
                         row=learned3d.get(bits[4]);return self.respond(row or dict(error='실행 없음'),200 if row else 404)
                     if len(bits)==5 and bits[3]=='projections':
                         row=projections.get(bits[4]);return self.respond(row or dict(error='투영 없음'),200 if row else 404)
-                    if len(bits)==6 and bits[3] in ('artifacts','projection-artifacts'):
-                        p=(projections if bits[3]=='projection-artifacts' else learned3d).artifact(bits[4],bits[5])
+                    if len(bits)==6 and bits[3] in ('artifacts','projection-artifacts','face-artifacts'):
+                        p=(faces if bits[3]=='face-artifacts' else projections if bits[3]=='projection-artifacts' else learned3d).artifact(bits[4],bits[5])
                         if not p:return self.respond(dict(error='파일 없음'),404)
                         raw=p.read_bytes();self.send_response(200);self.send_header('Content-Type', 'model/gltf-binary' if p.suffix=='.glb' else 'image/png' if p.suffix=='.png' else 'application/json');self.send_header('Content-Length',str(len(raw)));self.send_header('Cache-Control','no-store');self.send_header('X-Content-Type-Options','nosniff');self.end_headers();self.wfile.write(raw);return
                     raise ValueError('경로 오류')
@@ -224,6 +235,11 @@ def serve(root, host='127.0.0.1', port=8765, public_input=None, reference_root=N
                     if urlparse(self.path).query or self.headers.get('Content-Type','').split(';')[0]!='application/json':raise ValueError('데모 경로/형식 오류')
                     from .sketch_demos import prepare
                     try:return self.respond(prepare(learned3d,self.rfile.read(size)),201)
+                    except RuntimeError as e:return self.respond(dict(error=str(e)),409)
+                if path.startswith('/api/learned3d/runs/') and path.endswith('/faces'):
+                    bits=path.split('/')
+                    if len(bits)!=6 or urlparse(self.path).query or self.headers.get('Content-Type','').split(';')[0]!='application/json':raise ValueError('얼굴 편집 경로/형식 오류')
+                    try:return self.respond(faces.create(bits[4],self.rfile.read(size)),201)
                     except RuntimeError as e:return self.respond(dict(error=str(e)),409)
                 if path.startswith('/api/learned3d/runs/') and path.endswith('/projections'):
                     bits=path.split('/')

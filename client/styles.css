@@ -49,3 +49,5 @@ textarea{width:100%;min-height:7rem;resize:vertical;font:inherit;border:1px soli
 @media(max-width:700px){#learned3d-panel .fit-grid{grid-template-columns:minmax(0,1fr)}#learned3d-panel .fit-grid img{height:280px}#learned3d-panel .fit-viewer{height:320px}}
 
 #l3-demo-cards button[aria-pressed="true"]{outline:3px solid #176d65;outline-offset:2px}#l3-demo-cards button{min-width:0}#l3-demo-detail{overflow-wrap:anywhere}
+
+.face-anchor-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.face-anchor-row{border:1px solid #cbd9d8;border-radius:8px;padding:8px;min-width:0}.face-anchor-values{display:flex;gap:6px}.face-anchor-values label{flex:1;min-width:0}.face-anchor-values input{width:100%;min-width:0}#l3-face pre{overflow-wrap:anywhere;white-space:pre-wrap}#l3-face-viewer{height:560px;min-width:0}.sample-toolbar button{line-height:1.2}#l3-saved{width:100%;min-width:0}@media(max-width:600px){.face-anchor-grid{grid-template-columns:1fr}#l3-face-viewer{height:500px}}
