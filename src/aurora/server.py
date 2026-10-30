@@ -30,7 +30,10 @@ def serve(root, host='127.0.0.1', port=8765, public_input=None, reference_root=N
     weekly=ForecastFiles(root,reviews)
     from .sketch_fit import SketchFitService, MAX_BODY as SKETCH_BYTES
     sketch_fit=SketchFitService(root,sampling)
+    from .learned3d import Learned3DService
+    learned3d=Learned3DService(root,sampling)
     pool=ThreadPoolExecutor(max_workers=2)
+    gpu_pool=ThreadPoolExecutor(max_workers=1)
     if public_input is None:public_input=root.parent/'04_데이터/가공/2026-10-26_UCI_Online_Retail_II/weekly.json'
     from .public_jobs import PublicStore
     public=PublicStore(root/'results/public-jobs.sqlite3',public_input) if Path(public_input).exists() else None
@@ -51,6 +54,17 @@ def serve(root, host='127.0.0.1', port=8765, public_input=None, reference_root=N
             if not self.allowed_host():return self.respond(dict(error='로컬 호스트만 허용됩니다.'),403)
             path=urlparse(self.path).path
             try:
+                if path.startswith('/api/learned3d/'):
+                    if urlparse(self.path).query:raise ValueError('쿼리 거부')
+                    if path=='/api/learned3d/capabilities':return self.respond(learned3d.capabilities())
+                    bits=path.split('/')
+                    if len(bits)==5 and bits[3]=='runs':
+                        row=learned3d.get(bits[4]);return self.respond(row or dict(error='실행 없음'),200 if row else 404)
+                    if len(bits)==6 and bits[3]=='artifacts':
+                        p=learned3d.artifact(bits[4],bits[5])
+                        if not p:return self.respond(dict(error='파일 없음'),404)
+                        raw=p.read_bytes();self.send_response(200);self.send_header('Content-Type', 'model/gltf-binary' if p.suffix=='.glb' else 'image/png' if p.suffix=='.png' else 'application/json');self.send_header('Content-Length',str(len(raw)));self.send_header('Cache-Control','no-store');self.send_header('X-Content-Type-Options','nosniff');self.end_headers();self.wfile.write(raw);return
+                    raise ValueError('경로 오류')
                 if path=='/api/sketch-fit/capabilities':
                     try: import PIL
                     except ImportError: return self.respond(dict(available=False,reason='Pillow 설치 필요: pip install -e ".[data]"'))
@@ -194,8 +208,13 @@ def serve(root, host='127.0.0.1', port=8765, public_input=None, reference_root=N
             try:
                 size=int(self.headers.get('Content-Length','0'))
                 path=urlparse(self.path).path
-                limit=SKETCH_BYTES if path=='/api/sketch-fit/runs' else FILE_BYTES if path in ('/api/forecast-files/validate','/api/forecast-files/datasets') else SAMPLING_BYTES if path in ('/api/sampling/validate','/api/sampling/briefs') else 128*1024 if path=='/api/sampling-effects/reports' else 65536
+                limit=SKETCH_BYTES if path in ('/api/sketch-fit/runs','/api/learned3d/runs') else FILE_BYTES if path in ('/api/forecast-files/validate','/api/forecast-files/datasets') else SAMPLING_BYTES if path in ('/api/sampling/validate','/api/sampling/briefs') else 128*1024 if path=='/api/sampling-effects/reports' else 65536
                 if not 0<size<=limit:raise ValueError('요청 크기를 확인하세요.')
+                if path=='/api/learned3d/runs':
+                    if urlparse(self.path).query:raise ValueError('쿼리 거부')
+                    if self.headers.get('Content-Type','').split(';')[0]!='application/json':raise ValueError('application/json 필요')
+                    try:return self.respond(learned3d.request(self.rfile.read(size),gpu_pool),202)
+                    except RuntimeError as e:return self.respond(dict(error=str(e)),409)
                 if path=='/api/sketch-fit/runs':
                     if urlparse(self.path).query: raise ValueError('쿼리 거부')
                     if self.headers.get('Content-Type','').split(';')[0]!='application/json': raise ValueError('application/json 필요')
@@ -242,7 +261,7 @@ def serve(root, host='127.0.0.1', port=8765, public_input=None, reference_root=N
                 if path=='/api/ai-sampling/runs':
                     if urlparse(self.path).query:raise ValueError('AI API 쿼리는 허용하지 않습니다.')
                     req=generation_decode(self.rfile.read(size));row,new=ai.request(req)
-                    if new:pool.submit(ai.work,row['id'])
+                    if new:gpu_pool.submit(ai.work,row['id'])
                     return self.respond(row,202)
                 body=json.loads(self.rfile.read(size))
                 if not isinstance(body,dict):raise ValueError('객체 형식의 요청이 필요합니다.')
@@ -273,4 +292,4 @@ def serve(root, host='127.0.0.1', port=8765, public_input=None, reference_root=N
     server=ThreadingHTTPServer((host,port),Handler)
     print(f'Aurora synthetic demo: http://{host}:{port}',flush=True)
     try:server.serve_forever()
-    finally:stopped.set();server.server_close();worker.join(timeout=5);pool.shutdown(wait=True)
+    finally:stopped.set();server.server_close();worker.join(timeout=5);pool.shutdown(wait=True);gpu_pool.shutdown(wait=True)

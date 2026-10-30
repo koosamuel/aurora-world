@@ -15,3 +15,6 @@ test-results/
 client/config.local.js
 supabase/.temp/
 .DS_Store
+
+.models/
+.learned3d-local.json

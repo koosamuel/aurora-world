@@ -1,0 +1,19 @@
+import {samplingCloud} from './sampling-connection.js';
+export function initLearned3D(){
+const $=id=>document.getElementById('l3-'+id);let source=null,available=false,busy=false,epoch=0,viewer=null,urls=[];
+const say=t=>{$('status').textContent=t;};const controls=()=>{$('run').disabled=!available||!source||busy||samplingCloud();};
+async function api(path,opts={}){const r=await fetch('./api/learned3d/'+path,{...opts,signal:AbortSignal.timeout(30000)});const d=await r.json();if(!r.ok)throw new Error(d.error||'HTTP '+r.status);return d;}
+async function show(row,ticket){
+ if(ticket!==epoch)return;for(const u of urls)URL.revokeObjectURL(u);urls=[];$('downloads').replaceChildren();let glb;
+ for(const m of row.artifacts){if(!['condition.png','model.glb','report.json'].includes(m.file))throw new Error('산출물 이름 오류');const r=await fetch('./api/learned3d/artifacts/'+row.id+'/'+m.file,{signal:AbortSignal.timeout(30000)});if(!r.ok)throw new Error('산출물 조회 오류');const b=await r.arrayBuffer();const hash=[...new Uint8Array(await crypto.subtle.digest('SHA-256',b))].map(x=>x.toString(16).padStart(2,'0')).join('');if(b.byteLength!==m.bytes||hash!==m.sha256)throw new Error('산출물 무결성 오류');if(ticket!==epoch)return;const url=URL.createObjectURL(new Blob([b],{type:m.file.endsWith('.glb')?'model/gltf-binary':m.file.endsWith('.png')?'image/png':'application/json'}));urls.push(url);const a=document.createElement('a');a.href=url;a.download=m.file;a.textContent=m.file;a.className='secondary';a.style.marginRight='16px';$('downloads').append(a);if(m.file==='condition.png')$('condition').src=url;if(m.file==='model.glb')glb=b;}
+ $('result').hidden=false;$('report').textContent=JSON.stringify(row,null,2);if(!viewer){const {createSampleViewer}=await import('../vendor/sample-viewer.js');viewer=createSampleViewer($('viewer'));}viewer.clear();await viewer.load(glb);
+}
+$('form').addEventListener('submit',async e=>{e.preventDefault();if(busy||!source||samplingCloud()||!available)return;const ticket=epoch,s=source;busy=true;controls();$('result').hidden=true;try{const file=$('file').files[0];if(!file||!file.size||file.size>2*1024*1024)throw new Error('2MiB 이하 이미지 필요');const data=await new Promise((ok,no)=>{const reader=new FileReader();reader.onload=()=>ok(reader.result.split(',')[1]);reader.onerror=no;reader.readAsDataURL(file);});if(ticket!==epoch)return;
+let row=await api('runs',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image_base64:data,dimensions_mm:s.dimensions_mm,view:'single',source_id:s.id,source_checksum:s.checksum})});if(!/^[0-9a-f]{32}$/.test(row.id))throw new Error('실행 ID 오류');sessionStorage.setItem('aurora-learned3d-last',row.id);
+while(['queued','running'].includes(row.status)){if(ticket!==epoch)return;say('학습형 3D '+row.status+' · 실행 '+row.id+' · 로컬 복원에는 수분이 걸릴 수 있습니다.');await new Promise(ok=>setTimeout(ok,2000));row=await api('runs/'+row.id);}
+if(ticket!==epoch)return;if(row.status!=='succeeded')throw new Error(row.error||'생성 실패');await show(row,ticket);if(ticket!==epoch)return;say('학습형 3D 생성 완료 · 입력 누락/귀/뒷면을 검토하세요. 제작 승인 아님.');
+}catch(e){if(ticket===epoch)say('생성/표시 실패: '+e.message);}finally{busy=false;controls();}});
+window.addEventListener('generation-source-selected',e=>{epoch++;const s=e.detail.source;source=s?.family==='BUNNY'&&s?.data_kind==='synthetic'?s:null;$('source').textContent=source?'연결 명세: '+source.id+' · '+source.checksum.slice(0,12):'기존 U21에서 U20 토끼 명세를 선택하세요.';$('result').hidden=true;controls();});
+window.addEventListener('sampling-connection-changed',()=>{epoch++;source=null;$('result').hidden=true;controls();say('로컬 모드에서 토끼 명세를 다시 선택하세요.');});
+(async()=>{try{const c=await api('capabilities');available=c.available===true;say(available?'로컬 TripoSR 준비됨 · 스케치를 선택하세요.':c.reason);}catch{say('로컬 서버 연결 필요');}controls();})();
+}

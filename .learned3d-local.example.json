@@ -1,0 +1,6 @@
+{
+  "python": "/absolute/repo/.venv-ai/bin/python",
+  "source": "/absolute/repo/.models/TripoSR",
+  "weights": "/absolute/HF-cache/stabilityai-TripoSR/snapshots/5b521936b01fbe1890f6f9baed0254ab6351c04a",
+  "revision": "107cefdc244c39106fa830359024f6a2f1c78871"
+}

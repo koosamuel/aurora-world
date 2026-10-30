@@ -16,7 +16,7 @@ SIZE = 128
 SCOPE = '정면 토끼 규칙 기하 보정. 深度 미추정·학습모형 아님·봉제/패턴/BOM 미검증.'.replace('深度', '깊이')
 PARAMS = {'body_width': (.7, 1.3), 'head_width': (.7, 1.3), 'head_height': (.75, 1.25), 'ear_length': (.65, 1.35), 'ear_spacing': (.7, 1.3)}
 
-def decode(raw):
+def decode(raw, views=('front',)):
     if not 0 < len(raw) <= MAX_BODY: raise ValueError('요청 크기 초과')
     def pairs(items):
         out = {}
@@ -30,7 +30,7 @@ def decode(raw):
     required = {'image_base64', 'dimensions_mm', 'view'}
     if not isinstance(req, dict) or set(req) not in (required, required | {'source_id','source_checksum'}): raise ValueError('요청 필드 오류')
     if 'source_id' in req and (not isinstance(req['source_id'],str) or len(req['source_id'])>100 or not isinstance(req['source_checksum'],str) or not re.fullmatch('[0-9a-f]{64}',req['source_checksum'])): raise ValueError('명세 참조 형식 오류')
-    if req['view'] != 'front': raise ValueError('정면만 지원')
+    if req['view'] not in views: raise ValueError('지원하지 않는 시점')
     dims = req['dimensions_mm']
     if not isinstance(dims, dict) or set(dims) != {'width', 'height', 'depth'}: raise ValueError('세 치수 필요')
     for v in dims.values():

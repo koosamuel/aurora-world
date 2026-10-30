@@ -1,0 +1,7 @@
+# Additional packages for the existing optional .venv-ai environment.
+# Install the transformer compatibility layer separately; see docs/LEARNED_3D.md.
+omegaconf==2.3.0
+einops==0.8.2
+scikit-image==0.26.0
+trimesh==5.2.0
+imageio==2.38.1

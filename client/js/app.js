@@ -1,3 +1,4 @@
+import {initLearned3D} from './learned3d-view.js';
 import {initSketchFit} from './sketch-fit-view.js';
 import {setSamplingConnection,initSamplingQueue} from './sampling-connection.js';
 import {initForecastFiles,renderForecastFiles} from './forecast-file-view.js';
@@ -131,6 +132,7 @@ initForecastFiles();
 initLabeling();
 initIdentity();
 initSampling();
+initLearned3D();
 initSketchFit();
 initGeneration();
 initAISampling();
