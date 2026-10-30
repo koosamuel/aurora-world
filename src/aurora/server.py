@@ -28,6 +28,8 @@ def serve(root, host='127.0.0.1', port=8765, public_input=None, reference_root=N
     from .forecast_files import ForecastFiles, decode as file_decode
     from .inputs import MAX_BYTES as FILE_BYTES
     weekly=ForecastFiles(root,reviews)
+    from .sketch_fit import SketchFitService, MAX_BODY as SKETCH_BYTES
+    sketch_fit=SketchFitService(root)
     pool=ThreadPoolExecutor(max_workers=2)
     if public_input is None:public_input=root.parent/'04_데이터/가공/2026-10-26_UCI_Online_Retail_II/weekly.json'
     from .public_jobs import PublicStore
@@ -49,6 +51,19 @@ def serve(root, host='127.0.0.1', port=8765, public_input=None, reference_root=N
             if not self.allowed_host():return self.respond(dict(error='로컬 호스트만 허용됩니다.'),403)
             path=urlparse(self.path).path
             try:
+                if path=='/api/sketch-fit/capabilities':
+                    try: import PIL
+                    except ImportError: return self.respond(dict(available=False,reason='Pillow 설치 필요: pip install -e ".[data]"'))
+                    return self.respond(dict(available=True,mode='local',view='front',family='BUNNY'))
+                if path.startswith('/api/sketch-fit/artifacts/'):
+                    if urlparse(self.path).query: raise ValueError('쿼리 거부')
+                    bits=path.split('/')
+                    if len(bits)!=6: raise ValueError('파일 경로 거부')
+                    p=sketch_fit.artifact(bits[4],bits[5])
+                    if not p: return self.respond(dict(error='보정 파일 없음'),404)
+                    raw=p.read_bytes();self.send_response(200)
+                    self.send_header('Content-Type','image/png' if p.suffix=='.png' else 'model/gltf-binary' if p.suffix=='.glb' else 'application/json')
+                    self.send_header('Content-Length',str(len(raw)));self.send_header('X-Content-Type-Options','nosniff');self.send_header('Cache-Control','no-store');self.end_headers();self.wfile.write(raw);return
                 if path.startswith('/api/forecast-files/'):
                     bits=path.split('/');query=parse_qs(urlparse(self.path).query,keep_blank_values=True)
                     if path=='/api/forecast-files/datasets':
@@ -179,8 +194,15 @@ def serve(root, host='127.0.0.1', port=8765, public_input=None, reference_root=N
             try:
                 size=int(self.headers.get('Content-Length','0'))
                 path=urlparse(self.path).path
-                limit=FILE_BYTES if path in ('/api/forecast-files/validate','/api/forecast-files/datasets') else SAMPLING_BYTES if path in ('/api/sampling/validate','/api/sampling/briefs') else 128*1024 if path=='/api/sampling-effects/reports' else 65536
+                limit=SKETCH_BYTES if path=='/api/sketch-fit/runs' else FILE_BYTES if path in ('/api/forecast-files/validate','/api/forecast-files/datasets') else SAMPLING_BYTES if path in ('/api/sampling/validate','/api/sampling/briefs') else 128*1024 if path=='/api/sampling-effects/reports' else 65536
                 if not 0<size<=limit:raise ValueError('요청 크기를 확인하세요.')
+                if path=='/api/sketch-fit/runs':
+                    if urlparse(self.path).query: raise ValueError('쿼리 거부')
+                    if self.headers.get('Content-Type','').split(';')[0]!='application/json': raise ValueError('application/json 필요')
+                    try: return self.respond(sketch_fit.run(self.rfile.read(size)),201)
+                    except ImportError: return self.respond(dict(error='Pillow 설치 필요: pip install -e ".[data]"'),503)
+                    except RuntimeError as exc: return self.respond(dict(error=str(exc)),409)
+
                 if path.startswith('/api/forecast-files/'):
                     if urlparse(self.path).query:raise ValueError('파일 API 쿼리 거부')
                     raw=self.rfile.read(size)

@@ -1,0 +1,43 @@
+# 정면 토끼 스케치 윤곽 보정 — 로컬 실험
+
+## 실행
+
+```sh
+python3 -m pip install -e '.[data]'
+PYTHONPATH=src python3 -m aurora serve --port 8765
+```
+
+`http://127.0.0.1:8765/sketch-fit.html` 또는 기존 디지털 샘플링 탭의 ‘스케치 업로드 · 보정 전후 비교’를 연다. Pillow가 없으면 기능을 비활성화하고 설치 안내를 표시한다. 기존 기하 생성 경로는 그대로 유지한다.
+
+- 입력: 밝은 배경의 어두운 **닫힌 정면 토끼 윤곽**, PNG/JPEG, 2MiB 이하·8백만 픽셀 이하·가로세로 32px 이상. EXIF 방향·투명 배경을 처리한다.
+- 목표 너비/높이/깊이: 각 10~2000mm. 깊이와 실측 치수는 이미지에서 복원하지 않으며 사용자 가정이다.
+- 처리: 256px 이하로 축소 → 명도 180 임계값·3px 팽창으로 작은 선 간격 처리 → 닫힌 영역 채움 → 가장 큰 연결 성분 → 128px 비교 마스크.
+- 형상: 기존 U21 `procedural` 토끼를 재사용. 몸통 너비·머리 너비/높이·귀 길이/간격 5개 파라미터를 제한 범위에서 결정론적 좌표 탐색(31회 평가)한다.
+- 목적: 정면 직교 투영의 정규화 마스크 IoU. 개선된 파라미터만 채택하므로 이 목적값은 감소하지 않는다. 최적해·형상 정확도 보장은 아니다.
+- 결과: 추출 마스크, 전후 실루엣, 회전 가능한 전후 GLB, JSON 보고서와 다운로드. 클라이언트가 산출물 길이·SHA-256을 검증한다.
+
+## API
+
+- `GET /api/sketch-fit/capabilities`: 로컬 사용 가능 여부.
+- `POST /api/sketch-fit/runs`: `application/json`, `{image_base64, dimensions_mm:{width,height,depth}, view:"front"}`. 순수 base64이며 data URL·파일경로·외부 URL 입력은 받지 않는다. 성공 201, 입력 오류 400, 실행 중 충돌 409, Pillow 미설치 503.
+- `GET /api/sketch-fit/artifacts/<32자리 실행ID>/<허용 파일명>`: 무결성을 확인한 산출물만 제공한다. 원본 `input.bin`·manifest·임의 경로는 제공하지 않는다.
+
+기존 로컬 Host·Origin 제한을 유지한다. JSON 최대 3MiB, 이미지 최대 2MiB, 실행은 동시에 1건, 디스크 결과 최대 100건이다. 결과와 업로드 원본은 `results/sketch-fit/<id>/`에 저장되며 자동 삭제·외부 업로드·회사 승인·배포는 수행하지 않는다. 로컬 파일 정리는 사용자가 백업·보관 정책에 맞춰 수행한다.
+
+**정적 Pages 및 Supabase 큐 경로는 미지원**이다. 클라이언트가 정적 호스트에서는 실행을 막고 로컬 실행을 안내한다. 이번 변경은 클라이언트와 로컬 Python 서버 구현이며 클라우드 배포 완료가 아니다.
+
+## 검증 결과 (2026-10-30)
+
+- 신규 단위 테스트 6개: 요청 엄격성·빈 입력/잘못된 형식·윤곽 채움/투명 배경·비감소/재현/치수·파일 무결성/재시작/경로 제한·동시 실행 제한.
+- 기존 U21 생성 회귀 테스트 10개 통과.
+- Chrome 헤드리스: 합성 정면 토끼 업로드 → IoU **0.860 → 0.962**, 전후 WebGL GLB 표시, 다운로드 6개, JavaScript 예외 없음.
+- 실제 HTTP에서 잘못된 입력 400·교차 출처 POST 403 확인.
+- 기존 `01_토끼_스케치.jpg`는 사선·비대칭 자세 및 열린 연필 윤곽이 포함되어 현 추출기가 거부했다. **이 원화의 보정 성공으로 보고하지 않는다.** 정면 닫힌 윤곽 준비 또는 별도 분할/수동 마스크 기능이 후속이다.
+
+## 연구와 검증 경계
+
+Sketch2Mesh의 ‘투영 윤곽에 맞춰 형상을 보정’하는 아이디어를 참고한 **규칙 파라미터 기준선**이다. 논문 네트워크·잠재표현 최적화의 재현이 아니며 LAS-Diffusion·Meshy 모델을 실행하지 않는다. 파라미터 범위 안의 대칭 토끼만 다루며, 굽은 귀·관절·자세·뒷면·텍스처·재질을 새로 추론하지 않는다.
+
+모든 형상을 사용자 치수로 재정규화하므로 치수 일치는 입력을 따랐다는 뜻이지 실측 정확도가 아니다. 부위가 겹치는 외피이며 watertight 메시·봉제 패턴·시접·충전 물성·BOM·제작 승인은 미지원이다. 보고서의 `design_approved`·`manufacturing_verified`는 false다.
+
+참고: Guillard et al., [Sketch2Mesh (ICCV 2021)](https://arxiv.org/abs/2104.00482), Zhang et al., [Sketch2Model (CVPR 2021)](https://openaccess.thecvf.com/content/CVPR2021/html/Zhang_Sketch2Model_View-Aware_3D_Modeling_From_Single_Free-Hand_Sketches_CVPR_2021_paper.html).

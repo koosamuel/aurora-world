@@ -184,3 +184,7 @@ U20 가상 현행과 합성 시범의 제작 개수/사건 횟수·개발 달력
 ### 공개 사이트의 디지털 샘플링 실제 실행
 
 둘째 탭의 **서버 연결·로그인**에서 같은 Supabase Auth를 사용해 U20 명세 검증/불변 등록과 U21 기하·CLIP/SD1.5 2D 새 생성을 요청합니다. [역할·큐·비공개 파일·실행/운영](docs/SAMPLING_CLOUD.md)을 따릅니다. 샘플 워커는 `PYTHONPATH=src python3 -m aurora.sampling_cloud --env-file .env.local`입니다. 개발 PC가 켜져 있어야 계산하며 U22~U24 원격 저장은 후속입니다.
+
+## 스케치 윤곽 기반 토끼 3D 보정 · 로컬 실험
+
+[실행·API·검증·한계](docs/SKETCH_FIT.md). 로컬 서버의 `/sketch-fit.html`에서 정면 PNG/JPEG를 업로드하여 기존 규칙 기하의 부위 비율을 보정하고 실루엣/GLB 전후를 비교·다운로드한다. 합성 예제에서 동작 검증했으며, 기존 사선 토끼 원화는 현 추출기 지원 범위 밖이다. 학습형 3D 생성·봉제 검증·Pages/Supabase 실행·배포는 포함하지 않는다.
