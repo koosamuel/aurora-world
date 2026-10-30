@@ -1,15 +1,20 @@
-# U21 · local neural sketch-to-3D (experimental)
+# U21 · reviewed sketch input → neural 3D (experimental)
 
 ## Result, not a quality claim
 
-The existing U20 → U21 client/server now also accepts a locally uploaded PNG/JPEG,
-uses the selected immutable BUNNY brief/hash as context, and reconstructs a vertex-colored
-GLB through **official pretrained TripoSR**, not procedural ellipsoids. Requested dimensions
-are recorded only; outputs are not dimension-calibrated, design-approved, or manufacturing-approved.
-This path does not silently enter U22/U23 review/pattern/BOM workflows.
+The existing U20 → U21 client/server now supports **prepare → inspect foreground →
+explicitly confirm → local neural inference → inspect/download GLB**. No inference may
+start from the upload/preparation request alone. The current experimental engine is
+**TripoSG-scribble**, directly conditioned on the sketch and a fixed, disclosed BUNNY prompt.
+Its output uses a constant neutral material: it does NOT synthesize texture or recover eyes/nose markings.
+Legacy TripoSR remains an explicit local configuration option, never a silent failure fallback.
+Requested dimensions are recorded only; neither engine is dimension-calibrated, design-approved
+or manufacturing-approved. This path does not automatically enter U22/U23 workflows.
 
-**The requested Meshy screenshot quality was NOT reached in three evaluated rounds.**
-Do not confuse a valid/watertight GLB with a good reconstruction. No extra training was performed.
+## Initial TripoSR rounds (historical)
+
+The requested Meshy screenshot quality was NOT reached in the initial three rounds below.
+They are preserved failures, not current production-quality claims. No new model training was performed.
 
 | Round | Changes | Actual result | Mesh |
 |---|---|---|---|
@@ -21,11 +26,67 @@ All used the same actual rabbit sketch from project processed data, not a fabric
 `results/learned3d-evaluation/iteration{1,2,3}/` contains actual GLB/condition/report files locally.
 Round 1/2/3 reconstruction times on this Mac's MPS were approximately 10.1/10.2/10.9 seconds
 (excluding segmentation, checkpoint downloads, hashing and SD conditioning). These are not general benchmarks.
-The current default uses round 2's **contour** preprocessing; third-round SD design changes are
+The current preprocessing retains round 2's **contour** preservation; third-round SD design changes are
 an evaluation-only script, not a hidden production transformation. Uploaded transparent PNGs
-retain their supplied foreground alpha. No fourth neural reconstruction was run for this task.
+retain their supplied foreground alpha. No fourth TripoSR reconstruction was run in that initial three-round request.
 
-## Setup
+## Implemented improvement: input review + sketch-specific model
+
+1. Input preparation writes white-background preview.png, mask.png and preflight.json, with
+   a preparation SHA binding the source brief/checksum, uploaded pixels, foreground and preview hashes.
+2. The UI must display the preview and receive a separate explicit foreground confirmation.
+   Dark-pixel coverage is a heuristic diagnostic, NOT semantic completeness or 3D accuracy.
+3. Confirmation rechecks the brief and all prepared files. Stale/mutated/unconfirmed inputs do not queue.
+4. TripoSG-scribble uses a fixed developer BUNNY prompt, seed42, 16steps, sketch confidence.4,
+   prompt confidence1, 512latent tokens, non-flash dense SDF grid128. These are recorded assumptions,
+   not automatic extraction/fulfilment of the whole U20 brief.
+5. A normal-orientation check and constant neutral vertex color are explicit postprocessing.
+   No rembg/RMBG-1.4 or SD middle-image conversion is used by this improved pipeline.
+
+Actual follow-up generation: CLI1 + fresh browser/API2 = **3 TripoSG generations**, separate from
+initial TripoSR3. All produced 21,927vertices / 43,866faces for this seed/device. The first browser
+flow completed new inference/GLB display but failed the mobile overflow assertion; scoped CSS fixed
+that issue and the next fresh browser flow passed. One run does not establish generalization.
+
+Observed: head/torso/limbs regained visible volume instead of the previous thin sheet-like result.
+Remaining: absent facial/color/fabric texture, ear/foot detail differences and surface artifacts.
+**Meshy equivalence, expert design acceptance, scale and sewing/manufacturing remain unverified.**
+A watertight mesh is not evidence of sewability. The current choice is an experimental local default,
+not production acceptance. Exact input/foreground hashes are recorded with the confirmation.
+
+### TripoSG setup on the existing AI runtime
+
+Keep the base AI environment intact; isolate older compatibility libraries:
+
+```sh
+python -m pip install -r requirements-learned3d.txt
+git clone https://github.com/VAST-AI-Research/TripoSG.git .models/TripoSG
+git -C .models/TripoSG checkout fc5c40990181e2a756c4e0b1c2f4d6b5202faf8c
+python -m pip install --target .models/triposg-python --no-deps -r requirements-triposg-compat.txt
+```
+
+Download `VAST-AI/TripoSG-scribble` revision `e70b06bad2dece5b6a359aa8cd12f538cabd7095`
+using `huggingface_hub.snapshot_download` (about4.7GB tensor weights, plus tokenizer/config).
+Set engine:"TripoSG-scribble", python, triposg_source and triposg_weights absolute paths in
+`.learned3d-local.json` (example provided). Official source/model are MIT; files are SHA-pinned
+in `configs/ai/triposg-manifest.json` and verified locally before loading safetensors.
+No model files are committed. SD/TripoSR weights are not required to run the sketch-specific path.
+
+Official inference targets CUDA; this adapter was actually tested on this Mac's MPS/float16.
+The non-flash decoder uses upstream scikit-image marching cubes at equal dense/hierarchical depth7,
+avoiding CUDA-only refinement. Native diso is explicitly unavailable and fails if invoked, not silently
+approximated. VAE queries use4096-point chunks to bound memory. CPU remains a slow possible device;
+no CPU-performance or cross-hardware byte-reproduction guarantee is claimed.
+
+Official bases: [TripoSG source](https://github.com/VAST-AI-Research/TripoSG),
+[scribble weights](https://huggingface.co/VAST-AI/TripoSG-scribble),
+[technical report](https://arxiv.org/abs/2502.06608).
+The report describes the base shape/rectified-flow approach; the released scribble variant and
+its inference arguments were verified in official code, not inferred from that report.
+Hunyuan3D-2.1 was not adopted because its [shape license](https://github.com/Tencent-Hunyuan/Hunyuan3D-2.1/blob/main/hy3dshape/LICENSE)
+explicitly excludes South Korea from the licensed territory.
+
+## Legacy TripoSR setup
 
 Optional; normal synthetic U20–U24 requires none of these weights.
 Use the existing AI Python described in `AI_SAMPLING.md`. Additional packages:
@@ -56,37 +117,41 @@ TripoSR upstream source and weights are MIT; the existing SD1.5 experiment has i
 
 Run the usual `PYTHONPATH=src python -m aurora serve --port 8765` from the repository.
 In digital sampling select a U20 BUNNY brief. In **학습형 스케치 → 3D**, upload and consent.
-The UI polls the job, checks artifact size/SHA-256, shows the actual conditioned input and GLB,
-and offers GLB/PNG/JSON downloads. It warns explicitly that current pencil-sketch quality is insufficient.
+The UI first checks/shows prepared input/mask and requires confirmation, then polls the actual job,
+checks artifact size/SHA-256 and shows/downloads input/GLB/report. Old servers without
+requires_confirmation:true are disabled by the client; restart the local server after updating.
 No browser path, shell fragment, URL, prompt, model path or arbitrary hyperparameter is accepted.
 
 - `GET /api/learned3d/capabilities`
-- `POST /api/learned3d/runs` → 202; strict JSON fields `image_base64`, `dimensions_mm`,
+- `POST /api/learned3d/runs` → 201 **prepared, no inference**; strict JSON fields `image_base64`, `dimensions_mm`,
   `view:"single"`, `source_id`, `source_checksum`.
-- `GET /api/learned3d/runs/{id}` → queued/running/succeeded/failed.
-- `GET /api/learned3d/artifacts/{id}/{name}` → only condition.png/model.glb/report.json.
+- `POST /api/learned3d/runs/{id}/confirm` → 202; exactly preparation_sha256 and foreground_confirmed:true.
+- `GET /api/learned3d/runs/{id}` → prepared/queued/running/succeeded/failed.
+- `GET /api/learned3d/artifacts/{id}/{name}` → preview.png/mask.png/preflight.json before confirmation; condition.png/model.glb/report.json only after success. Input/foreground private originals are never served.
 
 Loopback Host and same-origin POST guards apply. Request ≤3MiB, decoded image ≤2MiB,
 PNG/JPEG single frame, ≥32 pixels, ≤8M pixels. Model processes use no shell and have 1,200-second
-per-stage timeouts. One active neural 3D request, maximum 100 stored runs; shared one-worker GPU
-executor serializes existing 2D AI and new 3D jobs. Restart marks queued/running jobs failed.
+inference timeout and60-second preparation timeout. One active neural 3D request, maximum 100 stored runs; shared one-worker GPU
+executor serializes existing 2D AI and new 3D jobs. Restart marks preparing/queued/running jobs failed while prepared inputs remain inspectable.
 Leaving the page does not cancel the server job. Inputs stay on this Mac; no paid API/cloud upload.
 
 ## Verification and next decision
 
-- 5 new service/preprocessor tests: hashes/briefs, input rejection, single-active guard,
-  worker failure/restart, artifact path/integrity, faint closed-contour fill.
-- Existing 7 silhouette-fit tests pass unchanged in behavior.
-- Three real local neural generations inspected from default and side views in the existing GLB viewer.
-- Browser integration test **replayed the stored real round-2 artifacts** with explicit
-  `integration_test_replay:true`, without generating a fourth mesh: U20 selection/upload/job API,
-  hash-checked GLB display, stale checksum 400, cross-origin 403, non-BUNNY disable, no JS errors.
-  This is a UI/protocol test, not an extra model-quality or full fresh-inference E2E result.
+- Full local Python197 pass, including13 learned3D service/preprocessor tests; JS14 pass;
+  SQL/RLS105 pass with Auth/Storage doubles (not new live Supabase verification).
+- The expanded13 cover no inference before confirmation, explicit boolean/hash, stale source,
+  corrupted prepared input/preview, one-active queue, idempotent confirmation, worker failure without
+  fallback, restart and timeout. CI installs small image/preprocessing dependencies, not model weights.
+- Fresh browser flow on an isolated local server: upload/preflight, missing/false/stale confirmation
+  rejected and GLB404 before confirmation, actual TripoSG inference, hash-checked GLB display,
+  stale source400, cross-origin403, non-BUNNY disable,390px without overflow, no page errors.
+  A separate old-server capability test also verified disabled submission/model POST0; its restart
+  warning persists across the connection-initialization event.
+  It is not a stored-result replay. The earlier replay test belongs only to initial TripoSR rounds.
+- Actual evaluated outputs and immutable copies are in project processed data
+  `04_데이터/가공/2026-10-30_스케치3D_개선/`. Existing production DB/U22 approvals were not changed.
+- Current code/test work does not verify a GitHub Actions/Pages deployment or Supabase model route.
 
-Further progress needs a better sketch-conditioned/multiview model or an explicitly authorized
-Meshy/provider integration, and a clear front/side reference. Do not keep tuning resolution alone:
-round 3 demonstrates that higher grid resolution does not repair missing input or design drift.
-
-References: [official code](https://github.com/VAST-AI-Research/TripoSR),
-[technical report](https://arxiv.org/abs/2403.02151),
-[official weights](https://huggingface.co/stabilityai/TripoSR).
+Next: compare more held-out sketches and front/side references; define acceptable ear/foot details and
+artist correction burden; evaluate a separately licensed texture/facial-marking approach. Only after
+explicit quality acceptance consider U22/remote integration, and keep scale/material/sewing validation separate.

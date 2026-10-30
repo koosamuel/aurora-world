@@ -5,3 +5,5 @@ einops==0.8.2
 scikit-image==0.26.0
 trimesh==5.2.0
 imageio==2.38.1
+jaxtyping==0.3.11
+typeguard==4.6.0

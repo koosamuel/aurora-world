@@ -2,5 +2,8 @@
   "python": "/absolute/repo/.venv-ai/bin/python",
   "source": "/absolute/repo/.models/TripoSR",
   "weights": "/absolute/HF-cache/stabilityai-TripoSR/snapshots/5b521936b01fbe1890f6f9baed0254ab6351c04a",
-  "revision": "107cefdc244c39106fa830359024f6a2f1c78871"
+  "revision": "107cefdc244c39106fa830359024f6a2f1c78871",
+  "engine": "TripoSG-scribble",
+  "triposg_source": "/absolute/repo/.models/TripoSG",
+  "triposg_weights": "/absolute/HF-cache/snapshots/e70b06bad2dece5b6a359aa8cd12f538cabd7095"
 }

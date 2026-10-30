@@ -210,10 +210,16 @@ def serve(root, host='127.0.0.1', port=8765, public_input=None, reference_root=N
                 path=urlparse(self.path).path
                 limit=SKETCH_BYTES if path in ('/api/sketch-fit/runs','/api/learned3d/runs') else FILE_BYTES if path in ('/api/forecast-files/validate','/api/forecast-files/datasets') else SAMPLING_BYTES if path in ('/api/sampling/validate','/api/sampling/briefs') else 128*1024 if path=='/api/sampling-effects/reports' else 65536
                 if not 0<size<=limit:raise ValueError('요청 크기를 확인하세요.')
+                if path.startswith('/api/learned3d/runs/') and path.endswith('/confirm'):
+                    bits=path.split('/')
+                    if len(bits)!=6 or urlparse(self.path).query:raise ValueError('확인 경로 오류')
+                    if self.headers.get('Content-Type','').split(';')[0]!='application/json':raise ValueError('application/json 필요')
+                    try:return self.respond(learned3d.confirm(bits[4],self.rfile.read(size),gpu_pool),202)
+                    except RuntimeError as e:return self.respond(dict(error=str(e)),409)
                 if path=='/api/learned3d/runs':
                     if urlparse(self.path).query:raise ValueError('쿼리 거부')
                     if self.headers.get('Content-Type','').split(';')[0]!='application/json':raise ValueError('application/json 필요')
-                    try:return self.respond(learned3d.request(self.rfile.read(size),gpu_pool),202)
+                    try:return self.respond(learned3d.request(self.rfile.read(size)),201)
                     except RuntimeError as e:return self.respond(dict(error=str(e)),409)
                 if path=='/api/sketch-fit/runs':
                     if urlparse(self.path).query: raise ValueError('쿼리 거부')

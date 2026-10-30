@@ -34,3 +34,16 @@ textarea{width:100%;min-height:7rem;resize:vertical;font:inherit;border:1px soli
 
 /* U21 in-place silhouette refinement */
 #sketch-fit-panel .fit-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:20px}#sketch-fit-panel .fit-grid img{width:100%;max-width:320px;background:#f5f7fa}#sketch-fit-panel .fit-viewer{height:320px;width:100%}#sketch-fit-panel label{display:block;margin:12px 0}#fit-confirm{width:auto;display:inline-block;margin-right:8px}
+
+/* Learned 3D: reviewable input and usable model viewport on desktop/mobile. */
+#learned3d-panel{min-width:0;max-width:100%;box-sizing:border-box;overflow-wrap:anywhere}
+#learned3d-panel .fit-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}
+#learned3d-panel .fit-grid article{min-width:0}
+#learned3d-panel .fit-grid img{display:block;width:100%;max-width:100%;height:360px;object-fit:contain;background:#f7f9f8}
+#learned3d-panel .fit-viewer{width:100%;height:420px;min-width:0}
+#learned3d-panel label{display:block;margin:12px 0}
+#learned3d-panel input[type=checkbox]{width:auto;display:inline-block;margin-right:8px}
+#learned3d-panel input[type=file]{width:100%;max-width:100%;box-sizing:border-box}
+#learned3d-panel pre{max-height:440px;max-width:100%;overflow:auto}
+#l3-downloads{display:flex;flex-wrap:wrap;gap:12px}
+@media(max-width:700px){#learned3d-panel .fit-grid{grid-template-columns:minmax(0,1fr)}#learned3d-panel .fit-grid img{height:280px}#learned3d-panel .fit-viewer{height:320px}}

@@ -1,0 +1,151 @@
+{
+  "engine": "TripoSG-scribble",
+  "repository": "https://github.com/VAST-AI-Research/TripoSG",
+  "source_revision": "fc5c40990181e2a756c4e0b1c2f4d6b5202faf8c",
+  "model_repository": "VAST-AI/TripoSG-scribble",
+  "model_revision": "e70b06bad2dece5b6a359aa8cd12f538cabd7095",
+  "license": "MIT",
+  "source_files": [
+    {
+      "file": "triposg/inference_utils.py",
+      "sha256": "6ff6ed1fa064389913bf55b188f152ad8aae4f5bd15dfff6027ade7515dc8dca"
+    },
+    {
+      "file": "triposg/models/attention_processor.py",
+      "sha256": "ace9e1e66a14a8b10a6ccf6e25c848fd44bd26ba38f5d6a0b4905d45fafe5ed6"
+    },
+    {
+      "file": "triposg/models/autoencoders/__init__.py",
+      "sha256": "9b698430cfcbe6389bc751d743578a87579cc97c8ac4effd5e062726e8e45087"
+    },
+    {
+      "file": "triposg/models/autoencoders/autoencoder_kl_triposg.py",
+      "sha256": "ce038158925c87bd8f5b33919458d72a32299e031d2e43b99437e678edd03547"
+    },
+    {
+      "file": "triposg/models/autoencoders/vae.py",
+      "sha256": "309195e744d71b349e0fd450b17a065172daac693afa43e22865231b25590dab"
+    },
+    {
+      "file": "triposg/models/embeddings.py",
+      "sha256": "fd5ef3792bf1620b0f41a0001e229f39eb91f6d7ea3b4a25a828e5c9e004e343"
+    },
+    {
+      "file": "triposg/models/transformers/__init__.py",
+      "sha256": "0d6648bc1e3d115805f42ff5512b33f793429cc1c84155fb81af496b17de3b4c"
+    },
+    {
+      "file": "triposg/models/transformers/modeling_outputs.py",
+      "sha256": "a73a4375f2341af4a3cbfddb67204bae81ebd53e6e8f4f951064879bbc68eee4"
+    },
+    {
+      "file": "triposg/models/transformers/triposg_transformer.py",
+      "sha256": "21d9ff8bea0067c7e03532f3dd91e71dfc5b915a2c0c4fd35ec0502ba6cb57ff"
+    },
+    {
+      "file": "triposg/pipelines/pipeline_triposg.py",
+      "sha256": "b4d7db44d9a91491babda665ce7bf4fe0f0343242fdf51c836d2405b752521d0"
+    },
+    {
+      "file": "triposg/pipelines/pipeline_triposg_output.py",
+      "sha256": "d734812a9a87e6901c29c20dbd07201c75666f0e33a39d4dcd0df5d8036f8d54"
+    },
+    {
+      "file": "triposg/pipelines/pipeline_triposg_scribble.py",
+      "sha256": "dddcea2556b3572dcfaf79e73539c55e9d0e0bf5becc7386a87e8e1b1f203621"
+    },
+    {
+      "file": "triposg/pipelines/pipeline_utils.py",
+      "sha256": "855679afdf32b9ee03e225dca423b379be7b3786b9669df6a20ba0b79a240945"
+    },
+    {
+      "file": "triposg/schedulers/__init__.py",
+      "sha256": "5559c9e43858b003dbfc86ac178ae0c84c2c2d834238c5af1f1843a2a64dbdcb"
+    },
+    {
+      "file": "triposg/schedulers/scheduling_rectified_flow.py",
+      "sha256": "6edaa6f5bccbf99d11c2e5ab81fbf9c319dd0dc2f3b89235d3fd43a606a401f7"
+    },
+    {
+      "file": "triposg/utils/typing.py",
+      "sha256": "1590ae0dbc24ca00af594899ce487aeb7df290017fdfd8e17d67086d1ca34625"
+    }
+  ],
+  "model_files": [
+    {
+      "file": "feature_extractor_dinov2/preprocessor_config.json",
+      "bytes": 436,
+      "sha256": "14e780d86fa1861f8751f868d7f45425b5feb55c38ca26f152ca5097ab30f828"
+    },
+    {
+      "file": "image_encoder_dinov2/config.json",
+      "bytes": 1086,
+      "sha256": "ad9aab3724195d5680ed8c7dfd10a7720e7766eedd1154e91f0189e48b938167"
+    },
+    {
+      "file": "image_encoder_dinov2/model.safetensors",
+      "bytes": 608785376,
+      "sha256": "aa0b83921a3339259fb1ef684ce63c9d09b5a45f9998e0789a0ad4cba318b07b"
+    },
+    {
+      "file": "model_index.json",
+      "bytes": 674,
+      "sha256": "a7367bb7e6bc3523a33f2b6a9f91931d8f71e140b859fb88b9a5849fc784daa4"
+    },
+    {
+      "file": "scheduler/scheduler_config.json",
+      "bytes": 158,
+      "sha256": "5cf43d6c32e9ab26734cd856c4081a30cc6b549f7bfd919090e26c27a838248c"
+    },
+    {
+      "file": "text_encoder/config.json",
+      "bytes": 574,
+      "sha256": "dcd56899ae6f8b937585f58b2d926e2b68a151dedca084030b2e9fcaa06eddc1"
+    },
+    {
+      "file": "text_encoder/model.safetensors",
+      "bytes": 247323896,
+      "sha256": "549d39f40a16f8ef48ed56da60cd25a467bd2c70866f4d49196829881b13b7b2"
+    },
+    {
+      "file": "tokenizer/merges.txt",
+      "bytes": 524619,
+      "sha256": "9fd691f7c8039210e0fced15865466c65820d09b63988b0174bfe25de299051a"
+    },
+    {
+      "file": "tokenizer/special_tokens_map.json",
+      "bytes": 585,
+      "sha256": "a46982c1c09487f4ba4118d4d491a01d7e1b3a9e457662aa93f7c7159f11eaf7"
+    },
+    {
+      "file": "tokenizer/tokenizer_config.json",
+      "bytes": 735,
+      "sha256": "c19f835a5e93d299b21dfee61c8f6a7cd06f5d83c8e828c013c25d2f36b47ccf"
+    },
+    {
+      "file": "tokenizer/vocab.json",
+      "bytes": 1059962,
+      "sha256": "e089ad92ba36837a0d31433e555c8f45fe601ab5c221d4f607ded32d9f7a4349"
+    },
+    {
+      "file": "transformer/config.json",
+      "bytes": 256,
+      "sha256": "57c00829ecdaa790d98f50d33db591df804e6067e526f57655f407b6b6a99116"
+    },
+    {
+      "file": "transformer/diffusion_pytorch_model.safetensors",
+      "bytes": 3363897912,
+      "sha256": "e5bd5765da5fa2f4790e8d299cda346df480e0370244dc64b0d91f5c0d35ae99"
+    },
+    {
+      "file": "vae/config.json",
+      "bytes": 336,
+      "sha256": "40fc07939464161fa68d2ae3e757932e5383bdc700ba9ce64d25bc08e9b71a6d"
+    },
+    {
+      "file": "vae/diffusion_pytorch_model.safetensors",
+      "bytes": 485361378,
+      "sha256": "b11438a228ffdf13fcbc798c5197170f027eadf353138139cf6c1fa7f655e7e0"
+    }
+  ]
+}
